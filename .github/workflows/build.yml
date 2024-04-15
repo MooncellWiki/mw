@@ -34,5 +34,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: dist.tgz
+          files: ../dist.tgz
           tag_name: ${{ steps.date.outputs.now }}
