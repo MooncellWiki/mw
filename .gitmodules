@@ -130,3 +130,148 @@
 	path = skins/Vector
 	url = https://gerrit.wikimedia.org/r/mediawiki/skins/Vector
 	branch = REL1_39
+[submodule "extensions/CheckUser"]
+	path = extensions/CheckUser
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/CheckUser
+	branch = REL1_39
+[submodule "extensions/ContributionScores"]
+	path = extensions/ContributionScores
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/ContributionScores
+	branch = REL1_39
+[submodule "extensions/DeleteBatch"]
+	path = extensions/DeleteBatch
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/DeleteBatch
+	branch = REL1_39
+[submodule "extensions/Echo"]
+	path = extensions/Echo
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/Echo
+	branch = REL1_39
+[submodule "extensions/Maintenance"]
+	path = extensions/Maintenance
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/Maintenance
+	branch = REL1_39
+[submodule "extensions/MassEditRegex"]
+	path = extensions/MassEditRegex
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/MassEditRegex
+	branch = REL1_39
+[submodule "extensions/CodeMirror"]
+	path = extensions/CodeMirror
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/CodeMirror
+	branch = REL1_39
+[submodule "extensions/Arrays"]
+	path = extensions/Arrays
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/Arrays
+	branch = REL1_39
+[submodule "extensions/Cargo"]
+	path = extensions/Cargo
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/Cargo
+[submodule "extensions/ExternalData"]
+	path = extensions/ExternalData
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/ExternalData
+[submodule "extensions/Graph"]
+	path = extensions/Graph
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/Graph
+	branch = REL1_39
+[submodule "extensions/DataMaps"]
+	path = extensions/DataMaps
+	url = https://github.com/alex4401/mediawiki-extensions-DataMaps.git
+	branch = REL1_39
+[submodule "extensions/LabeledSectionTransclusion"]
+	path = extensions/LabeledSectionTransclusion
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/LabeledSectionTransclusion
+	branch = REL1_39
+[submodule "extensions/Loops"]
+	path = extensions/Loops
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/Loops
+	branch = REL1_39
+[submodule "extensions/MsUpload"]
+	path = extensions/MsUpload
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/MsUpload
+	branch = REL1_39
+[submodule "extensions/MyVariables"]
+	path = extensions/MyVariables
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/MyVariables
+	branch = REL1_39
+[submodule "extensions/RegexFun"]
+	path = extensions/RegexFun
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/RegexFun
+	branch = REL1_39
+[submodule "extensions/RightFunctions"]
+	path = extensions/RightFunctions
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/RightFunctions
+	branch = REL1_39
+[submodule "extensions/TabberNeue"]
+	path = extensions/TabberNeue
+	url = https://github.com/MooncellWiki/mediawiki-extension-Lazyload.git
+[submodule "extensions/TemplateStyles"]
+	path = extensions/TemplateStyles
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/TemplateStyles
+	branch = REL1_39
+[submodule "extensions/Variables"]
+	path = extensions/Variables
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/Variables
+	branch = REL1_39
+[submodule "extensions/Widgets"]
+	path = extensions/Widgets
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/Widgets
+	branch = REL1_39
+[submodule "extensions/WikiSEO"]
+	path = extensions/WikiSEO
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/WikiSEO
+	branch = REL1_39
+[submodule "extensions/NativeSvgHandler"]
+	path = extensions/NativeSvgHandler
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/NativeSvgHandler
+	branch = REL1_39
+[submodule "extensions/VipsScaler"]
+	path = extensions/VipsScaler
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/VipsScaler
+	branch = REL1_39
+[submodule "extensions/Flow"]
+	path = extensions/Flow
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/Flow
+	branch = REL1_39
+[submodule "extensions/HeadScript"]
+	path = extensions/HeadScript
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/HeadScript
+	branch = REL1_39
+[submodule "extensions/JsonConfig"]
+	path = extensions/JsonConfig
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/JsonConfig
+	branch = REL1_39
+[submodule "extensions/Lazyload"]
+	path = extensions/Lazyload
+	url = https://github.com/MooncellWiki/mediawiki-extension-Lazyload.git
+[submodule "extensions/MobileFrontend"]
+	path = extensions/MobileFrontend
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/MobileFrontend
+	branch = REL1_39
+[submodule "extensions/MultiBoilerplate"]
+	path = extensions/MultiBoilerplate
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/MultiBoilerplate
+	branch = REL1_39
+[submodule "extensions/RevisionSlider"]
+	path = extensions/RevisionSlider
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/RevisionSlider
+	branch = REL1_39
+[submodule "extensions/PinyinSort"]
+	path = extensions/PinyinSort
+	url = https://github.com/nbdd0121/MW-PinyinSort.git
+[submodule "extensions/Sentry"]
+	path = extensions/Sentry
+	url = https://github.com/MooncellWiki/mediawiki-extensions-Sentry.git
+[submodule "extensions/Thanks"]
+	path = extensions/Thanks
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/Thanks
+	branch = REL1_39
+[submodule "extensions/UniversalLanguageSelector"]
+	path = extensions/UniversalLanguageSelector
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/UniversalLanguageSelector
+	branch = REL1_39
+[submodule "extensions/VectorMenuSidebar"]
+	path = extensions/VectorMenuSidebar
+	url = https://github.com/MooncellWiki/mediawiki-extension-VectorMenuSidebar.git
+[submodule "extensions/DeleteUserPages"]
+	path = extensions/DeleteUserPages
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/DeleteUserPages
+	branch = REL1_39

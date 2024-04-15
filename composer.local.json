@@ -1,0 +1,16 @@
+{
+	"require": {
+		"mediawiki/semantic-media-wiki": "~4.1",
+		"mediawiki/semantic-result-formats": "~4.0",
+		"universal-omega/dynamic-page-list3": "3.5.2",
+		"edwardspec/mediawiki-aws-s3": "v0.13.0"
+	},
+	"extra": {
+		"merge-plugin": {
+			"include": [
+				"extensions/AWS/composer.json",
+				"extensions/Sentry/composer.json"
+			]
+		}
+	}
+}
