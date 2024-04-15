@@ -28,7 +28,7 @@ jobs:
           tar --exclude-from=./mw/.github/workflows/exclude  -czvf dist.tgz mw
       - name: Get current time
         id: date
-        run: echo "now=$(date +'%Y-%m-%d-%H-%M-%S')" >> $GIHTUB_OUTPUT
+        run: echo "now=$(date +'%Y-%m-%d-%H-%M-%S')" >> $GITHUB_TOKEN
       - name: Create release
         uses: softprops/action-gh-release@v2
         env:
