@@ -26,10 +26,13 @@ jobs:
         run: |
           cd ..
           tar --exclude-from=./mw/.github/workflows/exclude  -czvf dist.tgz mw
-
+      - name: Get current time
+        id: date
+        run: echo "::set-output name=now::$(date +'%Y-%m-%d-%H-%M-%S')"
       - name: Create release
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: dist.tgz
+          tag: ${{ steps.date.outputs.now }}
