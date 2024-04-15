@@ -25,7 +25,7 @@ jobs:
       - name: Pack
         run: |
           cd ..
-          tar -czvf dist.tgz ./mw --exclude-from=./mw/.github/workflows/exclude
+          tar --exclude-from=./mw/.github/workflows/exclude  -czvf dist.tgz mw
 
       - name: Create release
         uses: softprops/action-gh-release@v2
