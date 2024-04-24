@@ -275,3 +275,14 @@
 	path = extensions/DeleteUserPages
 	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/DeleteUserPages
 	branch = REL1_39
+[submodule "extensions/CharInset"]
+	path = extensions/CharInset
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/CharInsert
+	branch = REL1_39
+[submodule "extensions/CharInsert"]
+	path = extensions/CharInsert
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/CharInsert
+	branch = REL1_39
+[submodule "extensions/LanguageParser"]
+	path = extensions/LanguageParser
+	url = https://github.com/MooncellWiki/mediawiki-extension-LanguageParser.git

@@ -1,0 +1,11 @@
+{
+	log default {
+		level DEBUG
+	}
+}
+http://localhost {
+	root * /workspaces/mw
+	encode gzip
+	php_fastcgi app:9000
+	file_server
+}
