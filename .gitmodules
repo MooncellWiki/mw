@@ -202,7 +202,7 @@
 	branch = REL1_39
 [submodule "extensions/TabberNeue"]
 	path = extensions/TabberNeue
-	url = https://github.com/MooncellWiki/mediawiki-extension-Lazyload.git
+	url = https://github.com/StarCitizenTools/mediawiki-extensions-TabberNeue.git
 [submodule "extensions/TemplateStyles"]
 	path = extensions/TemplateStyles
 	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/TemplateStyles
