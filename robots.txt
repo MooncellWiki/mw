@@ -159,3 +159,4 @@ Disallow: /w/User%3A
 Disallow: /w/%E7%94%A8%E6%88%B7:
 Disallow: /w/%E7%94%A8%E6%88%B7%3A
 Disallow: /images/
+Disallow: /index.php
