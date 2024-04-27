@@ -558,6 +558,10 @@ class MediaWiki {
 	 * Run the current MediaWiki instance; index.php just calls this
 	 */
 	public function run() {
+		$transactionContext = \Sentry\Tracing\TransactionContext::make()->setName('run');
+
+		// Start the transaction
+		$transaction = \Sentry\startTransaction($transactionContext);
 		try {
 			$this->main();
 		} catch ( Exception $e ) {
@@ -583,7 +587,7 @@ class MediaWiki {
 			// Type errors and such: at least handle it now and clean up the LBFactory state
 			MWExceptionHandler::handleException( $e, MWExceptionHandler::CAUGHT_BY_ENTRYPOINT );
 		}
-
+		$transaction->finish();
 		$this->doPostOutputShutdown();
 	}
 
