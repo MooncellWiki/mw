@@ -4,7 +4,6 @@ services:
 
     volumes:
       - ../..:/workspaces
-      - ./php/php.ini:/usr/local/etc/php/php.ini
     environment:
       - HTTP_RPXOY=http://172.22.240.1:7890
       - HTTPS_RPXOY=http://172.22.240.1:7890
