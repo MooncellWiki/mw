@@ -2,6 +2,7 @@ name: deploy
 
 on:
   push:
+    tags: ["v*.*.*"]
     branches:
       - MC1_39
 
