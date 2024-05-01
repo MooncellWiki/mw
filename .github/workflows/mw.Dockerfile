@@ -6,4 +6,6 @@ COPY . /var/www/html/
 
 WORKDIR /var/www/html/
 
-RUN composer install --no-dev
+RUN composer install --no-dev && \
+	mkdir tmp &&\
+	chown -R www-data:www-data *
