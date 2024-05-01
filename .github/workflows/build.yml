@@ -58,7 +58,7 @@ jobs:
             registry.cn-shanghai.aliyuncs.com/prts/ng
             ghcr.io/mooncellwiki/ng
           tags: |
-            type=semver,pattern={{version}}
+            type=semver,pattern={{raw}}
             type=sha
 
       - name: Build and push Docker image
