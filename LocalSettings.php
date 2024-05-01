@@ -160,7 +160,7 @@ $wgHooks['SkinTemplateOutputPageBeforeExec'][] = function ($sk, &$tpl) {
 };
 
 $wgFooterIcons['poweredby']['mooncellproject'] = [
-   "src" => "/images/project1.png",
+   "src" => "//project.mooncell.wiki/project1.png",
    "url" => "//project.mooncell.wiki",
    "alt" => "a Mooncell project",
    "height" => "31",
