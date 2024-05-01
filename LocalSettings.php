@@ -476,7 +476,7 @@ wfLoadExtension('DeleteUserPages');
 $wgGroupPermissions['user']['delete-rootuserpages'] = true; // Let users delete their own user page and user talk page
 $wgGroupPermissions['user']['delete-usersubpages'] = true; // Let users delete their own user subpages and associated talk pages
 
-# Arrays 
+# Arrays
 wfLoadExtension('Arrays');
 
 # Widgets
@@ -513,6 +513,7 @@ $wgGroupPermissions['bureaucrat']['deletebatch'] = false;
 $wgGroupPermissions['sysop']['deletebatch'] = true;
 wfLoadExtension('SemanticMediaWiki');
 enableSemantics($wgCanonicalServer, true);
+$smwgConfigFileDir= __DIR__ . '/etc';
 wfLoadExtension('SemanticResultFormats');
 $smwgDVFeatures = ($smwgDVFeatures & ~SMW_DV_WPV_DTITLE);
 $smwgQueryResultCacheType = CACHE_MEMCACHED;
