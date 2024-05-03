@@ -457,6 +457,9 @@ $wgMFLazyLoadImages =   [
 $wgMFAutodetectMobileView = false;
 $wgMFMobileHeader = "X-Subdomain";
 $wgMFEnableManifest = false;
+# disable mobile frontend HTML transform
+$wgMFMobileFormatterOptions["maxImages"] = -1;
+$wgMFMobileFormatterOptions["maxHeadings"] = -1;
 
 # LabeledSectionTransclusion
 wfLoadExtension('LabeledSectionTransclusion');
