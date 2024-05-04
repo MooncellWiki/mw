@@ -315,8 +315,19 @@ class CdnCacheUpdate implements DeferrableUpdate, MergeableUpdate {
 					'User-Agent' => 'MediaWiki/' . MW_VERSION . ' ' . __CLASS__
 				]
 			];
+			$mobileReq = [
+				'method' => 'PURGE',
+				'url' => $url,
+				'headers' => [
+					'Host' => "m." . $urlHost,
+					'Connection' => 'Keep-Alive',
+					'Proxy-Connection' => 'Keep-Alive',
+					'User-Agent' => 'MediaWiki/' . MW_VERSION . ' ' . __CLASS__
+				]
+			];
 			foreach ( $cdnServers as $server ) {
 				$reqs[] = ( $baseReq + [ 'proxy' => $server ] );
+				$reqs[] = ( $mobileReq );
 			}
 		}
 
