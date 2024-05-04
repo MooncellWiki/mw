@@ -327,7 +327,7 @@ class CdnCacheUpdate implements DeferrableUpdate, MergeableUpdate {
 			];
 			foreach ( $cdnServers as $server ) {
 				$reqs[] = ( $baseReq + [ 'proxy' => $server ] );
-				$reqs[] = ( $mobileReq );
+				$reqs[] = ( $mobileReq + [ 'proxy' => $server ] );
 			}
 		}
 
