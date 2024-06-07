@@ -88,6 +88,6 @@ jobs:
           context: .
           file: .github/workflows/caddy.Dockerfile
           push: true
-          tags: ${{ steps.ng_meta.outputs.tags }}
-          labels: ${{ steps.ng_meta.outputs.labels }}
+          tags: ${{ steps.caddy_meta.outputs.tags }}
+          labels: ${{ steps.caddy_meta.outputs.labels }}
           build-args: VERSION=${{ github.ref_name }}
