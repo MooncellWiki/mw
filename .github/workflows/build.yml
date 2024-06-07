@@ -70,3 +70,24 @@ jobs:
           tags: ${{ steps.ng_meta.outputs.tags }}
           labels: ${{ steps.ng_meta.outputs.labels }}
           build-args: VERSION=${{ github.ref_name }}
+
+      - name: Extract nginx Docker Metadata
+        id: caddy_meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            registry.cn-shanghai.aliyuncs.com/prts/ng
+            ghcr.io/mooncellwiki/ng
+          tags: |
+            type=semver,pattern={{raw}}
+            type=sha
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: .github/workflows/caddy.Dockerfile
+          push: true
+          tags: ${{ steps.ng_meta.outputs.tags }}
+          labels: ${{ steps.ng_meta.outputs.labels }}
+          build-args: VERSION=${{ github.ref_name }}
