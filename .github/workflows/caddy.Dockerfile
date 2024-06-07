@@ -9,3 +9,4 @@ FROM caddy:2.8.4
 
 COPY --from=builder /usr/bin/caddy /usr/bin/caddy
 COPY --from=mw /var/www/html/ /srv/
+RUN chown -R root:root /srv

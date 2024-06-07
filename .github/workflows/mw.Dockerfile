@@ -1,10 +1,10 @@
 FROM ghcr.io/mooncellwiki/php:latest
 
-VOLUME [ "/var/www/html/etc" ]
+VOLUME [ "/srv/etc" ]
 
-COPY . /var/www/html/
+COPY . /srv/
 
-WORKDIR /var/www/html/
+WORKDIR /srv/
 
 RUN composer install --no-dev && \
 	mkdir tmp &&\
