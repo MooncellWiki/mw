@@ -1,3 +1,4 @@
+ARG VERSION
 FROM caddy:2.8.4-builder AS builder
 
 RUN xcaddy build \
