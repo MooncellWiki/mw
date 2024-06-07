@@ -71,13 +71,13 @@ jobs:
           labels: ${{ steps.ng_meta.outputs.labels }}
           build-args: VERSION=${{ github.ref_name }}
 
-      - name: Extract nginx Docker Metadata
+      - name: Extract Caddy Docker Metadata
         id: caddy_meta
         uses: docker/metadata-action@v5
         with:
           images: |
-            registry.cn-shanghai.aliyuncs.com/prts/ng
-            ghcr.io/mooncellwiki/ng
+            registry.cn-shanghai.aliyuncs.com/prts/caddy
+            ghcr.io/mooncellwiki/caddy
           tags: |
             type=semver,pattern={{raw}}
             type=sha
