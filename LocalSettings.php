@@ -122,7 +122,7 @@ $wgForcedRawSMaxage = 3600;
 $wgMaxImageArea = 3.6e7;
 $wgMaxAnimatedGifArea = 3.6e7;
 
-$wgJobRunRate = 0.03;
+$wgJobRunRate = 0.003;
 $wgRunJobsAsync = true;
 $wgUpdateRowsPerJob = 50;
 
