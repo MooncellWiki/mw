@@ -1,3 +1,4 @@
+ARG VERSION
 FROM ghcr.io/mooncellwiki/mw:$VERSION as mw
 FROM caddy:2.8.4
 
