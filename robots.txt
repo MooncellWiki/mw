@@ -11,10 +11,6 @@
 User-agent: MJ12bot
 Disallow: /
 
-# advertising-related bots:
-User-agent: Mediapartners-Google*
-Disallow: /
-
 # Wikipedia work bots:
 User-agent: IsraBot
 Disallow:
