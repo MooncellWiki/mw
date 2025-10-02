@@ -1,0 +1,8 @@
+{
+    "name": "mw",
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "app",
+	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+	"remoteUser": "vscode",
+    "postStartCommand": "php-fpm"
+}
