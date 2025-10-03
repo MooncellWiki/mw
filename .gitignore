@@ -47,9 +47,10 @@ sftp-config.json
 /images/tmp
 /maintenance/.mweval_history
 /maintenance/.mwsql_history
+/maintenance/dev/data
 /LocalSettings.php
 /includes/PlatformSettings.php
-
+/etc/
 # Building & testing
 npm-debug.log
 node_modules/
@@ -64,8 +65,11 @@ phpunit.xml
 .phan/local-config.php
 
 # Composer
-/composer.lock
-/composer.local.json
+/vendor
+/extensions/AWS
+/extensions/DynamicPageList3
+/extensions/SemanticMediaWiki
+/extensions/SemanticResultFormats
 /composer.phar
 
 # Operating systems
