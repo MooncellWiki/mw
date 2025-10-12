@@ -24,7 +24,7 @@ services:
     image: mysql:8.0.42
     restart: unless-stopped
     volumes:
-      - mysql-data:/var/lib/mysql
+      - ../etc/data:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: mysql
       MYSQL_DATABASE: mysql
@@ -42,5 +42,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  mysql-data:
   caddy_data:
