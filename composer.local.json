@@ -46,6 +46,7 @@
 				"extensions/MultiBoilerplate/composer.json",
 				"extensions/MultimediaViewer/composer.json",
 				"extensions/MyVariables/composer.json",
+				"extensions/NativeSvgHandler/composer.json",
 				"extensions/Nuke/composer.json",
 				"extensions/OATHAuth/composer.json",
 				"extensions/PageImages/composer.json",
