@@ -246,9 +246,6 @@
 	path = extensions/JsonConfig
 	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/JsonConfig
 	branch = REL1_43
-[submodule "extensions/Lazyload"]
-	path = extensions/Lazyload
-	url = https://github.com/MooncellWiki/mediawiki-extension-Lazyload.git
 [submodule "extensions/MobileFrontend"]
 	path = extensions/MobileFrontend
 	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/MobileFrontend
@@ -285,7 +282,6 @@
 [submodule "extensions/LanguageParser"]
 	path = extensions/LanguageParser
 	url = https://github.com/MooncellWiki/mediawiki-extension-LanguageParser.git
-[submodule "extensions/NativeSvgHandler"]
-	path = extensions/NativeSvgHandler
-	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/NativeSvgHandler
-	branch = REL1_43
+[submodule "extensions/MoeImgTag"]
+	path = extensions/MoeImgTag
+	url = https://github.com/moegirlwiki/mediawiki-extension-MoeImgTag.git

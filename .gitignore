@@ -48,9 +48,7 @@ sftp-config.json
 /maintenance/.mweval_history
 /maintenance/.mwsql_history
 /maintenance/dev/data
-/LocalSettings.php
 /includes/PlatformSettings.php
-/etc/
 # Building & testing
 npm-debug.log
 node_modules/
@@ -95,3 +93,6 @@ Thumbs.db
 # Docker
 docker-compose.override.yml
 .env
+
+/etc/*
+!.gitkeep
