@@ -285,3 +285,7 @@
 [submodule "extensions/LanguageParser"]
 	path = extensions/LanguageParser
 	url = https://github.com/MooncellWiki/mediawiki-extension-LanguageParser.git
+[submodule "extensions/NativeSvgHandler"]
+	path = extensions/NativeSvgHandler
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/NativeSvgHandler
+	branch = REL1_43
