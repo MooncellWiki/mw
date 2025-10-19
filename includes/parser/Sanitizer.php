@@ -1544,7 +1544,7 @@ class Sanitizer {
 			# 13.2
 			# Not usually allowed, but may be used for extension-style hooks
 			# such as <math> when it is rasterized
-			'img'        => $merge( $common, [ 'alt', 'src', 'width', 'height', 'srcset' ] ),
+			'img'        => $merge( $common, [ 'alt', 'src', 'width', 'height', 'srcset', 'loading' ] ),
 			# Attributes for A/V tags added in T163583 / T133673
 			'audio'      => $merge( $common, [ 'controls', 'preload', 'width', 'height' ] ),
 			'video'      => $merge( $common, [ 'poster', 'controls', 'preload', 'width', 'height' ] ),
