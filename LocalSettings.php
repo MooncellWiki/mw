@@ -457,6 +457,7 @@ $wgMFAutodetectMobileView = false;
 $wgMFMobileHeader = "X-Subdomain";
 $wgMFEnableManifest = false;
 $wgMobileUrlCallback = fn ( $domain ) => "m.$domain"; // domain for mobile site
+$wgMFCustomSiteModules = true;
 
 # LabeledSectionTransclusion
 wfLoadExtension('LabeledSectionTransclusion');
