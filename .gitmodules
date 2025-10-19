@@ -282,6 +282,3 @@
 [submodule "extensions/LanguageParser"]
 	path = extensions/LanguageParser
 	url = https://github.com/MooncellWiki/mediawiki-extension-LanguageParser.git
-[submodule "extensions/MoeImgTag"]
-	path = extensions/MoeImgTag
-	url = https://github.com/moegirlwiki/mediawiki-extension-MoeImgTag.git

@@ -559,6 +559,4 @@ wfLoadExtension('AWS');
 
 wfLoadExtension('Sentry');
 
-wfLoadExtension( 'MoeImgTag' );
-
 require_once __DIR__ . '/etc/post-config.php';

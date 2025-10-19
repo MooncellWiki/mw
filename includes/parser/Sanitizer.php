@@ -175,7 +175,8 @@ class Sanitizer {
 			# $htmlsingleonly, a self-closed tag will be emitted as
 			# an empty element (open-tag/close-tag pair).
 			$htmlsingle = [
-				'br', 'wbr', 'hr', 'li', 'dt', 'dd', 'meta', 'link'
+				'br', 'wbr', 'hr', 'li', 'dt', 'dd', 'meta', 'link',
+				'img' // https://gerrit.wikimedia.org/r/c/mediawiki/core/+/994116
 			];
 
 			# Elements that cannot have close tags. This is (not coincidentally)
@@ -184,7 +185,8 @@ class Sanitizer {
 			# a self-closing tag like <br/> is not an HTML 5 parse error only
 			# for this list.
 			$htmlsingleonly = [
-				'br', 'wbr', 'hr', 'meta', 'link'
+				'br', 'wbr', 'hr', 'meta', 'link',
+				'img' // https://gerrit.wikimedia.org/r/c/mediawiki/core/+/994116
 			];
 
 			$htmlnest = [ # Tags that can be nested--??
