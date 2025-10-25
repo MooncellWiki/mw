@@ -261,9 +261,6 @@
 [submodule "extensions/PinyinSort"]
 	path = extensions/PinyinSort
 	url = https://github.com/nbdd0121/MW-PinyinSort.git
-[submodule "extensions/Sentry"]
-	path = extensions/Sentry
-	url = https://github.com/MooncellWiki/mediawiki-extensions-Sentry.git
 [submodule "extensions/UniversalLanguageSelector"]
 	path = extensions/UniversalLanguageSelector
 	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/UniversalLanguageSelector

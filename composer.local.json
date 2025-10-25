@@ -3,7 +3,8 @@
 		"mediawiki/semantic-media-wiki": "~6.0.0",
 		"mediawiki/semantic-result-formats": "~5.1.0",
 		"universal-omega/dynamic-page-list3": "3.6.4",
-		"edwardspec/mediawiki-aws-s3": "v0.13.1"
+		"edwardspec/mediawiki-aws-s3": "v0.13.1",
+		"sentry/sentry": "^4.17.1"
 	},
 	"extra": {
 		"merge-plugin": {
@@ -59,7 +60,6 @@
 				"extensions/RightFunctions/composer.json",
 				"extensions/Scribunto/composer.json",
 				"extensions/SecureLinkFixer/composer.json",
-				"extensions/Sentry/composer.json",
 				"extensions/SpamBlacklist/composer.json",
 				"extensions/SyntaxHighlight_GeSHi/composer.json",
 				"extensions/TabberNeue/composer.json",

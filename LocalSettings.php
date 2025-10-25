@@ -559,6 +559,4 @@ wfLoadExtension('ExternalData');
 
 wfLoadExtension('AWS');
 
-wfLoadExtension('Sentry');
-
 require_once __DIR__ . '/etc/post-config.php';
