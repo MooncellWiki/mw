@@ -348,7 +348,6 @@ wfLoadExtension('Echo');
 
 # Echo
 wfLoadExtension('Echo');
-wfLoadExtension('Graph');
 # Loops
 wfLoadExtension('Loops');
 $egLoopsCountLimit  = 800;

@@ -29,7 +29,6 @@
 				"extensions/ExternalData/composer.json",
 				"extensions/Flow/composer.json",
 				"extensions/Gadgets/composer.json",
-				"extensions/Graph/composer.json",
 				"extensions/HeadScript/composer.json",
 				"extensions/ImageMap/composer.json",
 				"extensions/InputBox/composer.json",

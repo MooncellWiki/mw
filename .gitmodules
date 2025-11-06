@@ -180,10 +180,6 @@
 [submodule "extensions/ExternalData"]
 	path = extensions/ExternalData
 	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/ExternalData
-[submodule "extensions/Graph"]
-	path = extensions/Graph
-	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/Graph
-	branch = REL1_43
 [submodule "extensions/DataMaps"]
 	path = extensions/DataMaps
 	url = https://github.com/alex4401/mediawiki-extensions-DataMaps.git
