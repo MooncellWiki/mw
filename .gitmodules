@@ -132,7 +132,7 @@
 	branch = REL1_43
 [submodule "skins/MinervaNeue"]
 	path = skins/MinervaNeue
-	url = https://gerrit.wikimedia.org/r/mediawiki/skins/MinervaNeue
+	url = https://github.com/MooncellWiki/mediawiki-skins-MinervaNeue
 	branch = REL1_43
 [submodule "skins/MonoBook"]
 	path = skins/MonoBook
