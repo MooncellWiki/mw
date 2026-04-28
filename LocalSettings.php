@@ -558,4 +558,112 @@ wfLoadExtension('ExternalData');
 
 wfLoadExtension('AWS');
 
+// Add a content-version query string to MediaWiki file URLs so CDN caches
+// naturally miss after same-name file reuploads.
+function mwAppendFileVersionToUrl( $url, $file ) {
+   if ( !$url || !$file || !$file->exists() ) {
+      return $url;
+   }
+
+   $version = $file->getSha1() ?: $file->getTimestamp();
+   if ( !$version ) {
+      return $url;
+   }
+
+   return wfAppendQuery( $url, [ 'v' => $version ] );
+}
+
+$wgHooks['ImageBeforeProduceHTML'][] = static function (
+   $unused,
+   &$title,
+   &$file,
+   &$frameParams,
+   &$handlerParams,
+   &$time,
+   &$res,
+   $parser,
+   &$query,
+   &$widthOption
+) {
+   // This hook fires before MediaWiki creates the transform output; the final
+   // src/href attributes are versioned in the hooks below.
+   return true;
+};
+
+$wgHooks['ThumbnailBeforeProduceHTML'][] = static function ( $thumbnail, &$attribs, &$linkAttribs ) {
+   $file = $thumbnail->getFile();
+
+   if ( isset( $attribs['src'] ) ) {
+      $attribs['src'] = mwAppendFileVersionToUrl( $attribs['src'], $file );
+   }
+
+   if ( isset( $attribs['srcset'] ) ) {
+      $srcset = array_map(
+         static function ( $entry ) use ( $file ) {
+            $parts = preg_split( '/\s+/', trim( $entry ), 2 );
+            $parts[0] = mwAppendFileVersionToUrl( $parts[0], $file );
+            return implode( ' ', $parts );
+         },
+         explode( ',', $attribs['srcset'] )
+      );
+      $attribs['srcset'] = implode( ', ', $srcset );
+   }
+
+   if ( isset( $linkAttribs['href'] ) ) {
+      $linkAttribs['href'] = mwAppendFileVersionToUrl( $linkAttribs['href'], $file );
+   }
+
+   return true;
+};
+
+$wgHooks['LinkerMakeMediaLinkFile'][] = static function ( $title, $file, &$html, &$attribs, &$ret ) {
+   if ( isset( $attribs['href'] ) ) {
+      $attribs['href'] = mwAppendFileVersionToUrl( $attribs['href'], $file );
+   }
+
+   return true;
+};
+
+$wgHooks['ParserFirstCallInit'][] = static function ( $parser ) {
+   $parser->setFunctionHook(
+      'filepath',
+      static function ( $parser, $name = '', $argA = '', $argB = '' ) {
+         $file = MediaWiki\MediaWikiServices::getInstance()->getRepoGroup()->findFile( $name );
+
+         if ( $argA == 'nowiki' ) {
+            $isNowiki = true;
+            $parsedWidthParam = $parser->parseWidthParam( $argB );
+         } else {
+            $parsedWidthParam = $parser->parseWidthParam( $argA );
+            $isNowiki = ( $argB == 'nowiki' );
+         }
+
+         if ( !$file ) {
+            return '';
+         }
+
+         $url = $file->getFullUrl();
+
+         if ( count( $parsedWidthParam ) ) {
+            $mto = $file->transform( $parsedWidthParam );
+            if ( $mto && !$mto->isError() ) {
+               $urlUtils = MediaWiki\MediaWikiServices::getInstance()->getUrlUtils();
+               $url = $urlUtils->expand( $mto->getUrl(), PROTO_RELATIVE ) ?? false;
+            }
+         }
+
+         $url = mwAppendFileVersionToUrl( $url, $file );
+
+         if ( $isNowiki ) {
+            return [ $url, 'nowiki' => true ];
+         }
+
+         return $url;
+      },
+      Parser::SFH_NO_HASH
+   );
+
+   return true;
+};
+
 require_once __DIR__ . '/etc/post-config.php';
