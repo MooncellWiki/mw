@@ -275,3 +275,6 @@
 [submodule "extensions/LanguageParser"]
 	path = extensions/LanguageParser
 	url = https://github.com/MooncellWiki/mediawiki-extension-LanguageParser.git
+[submodule "extensions/CDNCacheBuster"]
+	path = extensions/CDNCacheBuster
+	url = https://github.com/MooncellWiki/mediawiki-extensions-CDNCacheBuster.git
