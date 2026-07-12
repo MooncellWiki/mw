@@ -278,3 +278,6 @@
 [submodule "extensions/CDNCacheBuster"]
 	path = extensions/CDNCacheBuster
 	url = https://github.com/MooncellWiki/mediawiki-extensions-CDNCacheBuster.git
+[submodule "extensions/CrawlerProtection"]
+	path = extensions/CrawlerProtection
+	url = https://github.com/mywikis/CrawlerProtection.git

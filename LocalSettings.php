@@ -560,4 +560,25 @@ wfLoadExtension('AWS');
 
 wfLoadExtension('CDNCacheBuster');
 
+# CrawlerProtection
+wfLoadExtension('CrawlerProtection');
+$wgCrawlerProtectedSpecialPages = [
+    'mobilediff',      // 特殊:移动版差异
+    'recentchangeslinked', // 特殊:最近链出更改
+    'whatlinkshere',   // 特殊:链入页面
+    'log',             // 特殊:日志
+    'abuselog',        // 特殊:滥用日志
+    'drilldown',       // 特殊:深入分析 (Cargo)
+    'ask',             // 特殊:询问 (SMW)
+    'cargotables',     // 特殊:Cargo表
+    'cargoquery',      // 特殊:Cargo查询/查看数据
+    'browse',          // 特殊:浏览 (SMW)
+    'searchbyproperty', // 特殊:按属性搜索 (SMW)
+];
+$wgCrawlerProtectedActions = [
+    'history',
+];
+$wgCrawlerProtectionRawDenial = true;
+$wgCrawlerProtectionUse418 = true;
+
 require_once __DIR__ . '/etc/post-config.php';
