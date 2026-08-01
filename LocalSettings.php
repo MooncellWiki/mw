@@ -579,6 +579,5 @@ $wgCrawlerProtectedActions = [
     'history',
 ];
 $wgCrawlerProtectionRawDenial = true;
-$wgCrawlerProtectionUse418 = true;
 
 require_once __DIR__ . '/etc/post-config.php';
