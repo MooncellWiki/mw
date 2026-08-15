@@ -96,3 +96,6 @@ docker-compose.override.yml
 
 /etc/*
 !.gitkeep
+!/etc/config.example.php
+!/etc/post-config.example.php
+!/etc/CONTRIBUTOR_ENVIRONMENT.md
