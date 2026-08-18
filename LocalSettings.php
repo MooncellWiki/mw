@@ -130,11 +130,6 @@ $wgUsePrivateIPs = true;
 
 $wgHiddenPrefs[] = 'nickname';
 
-$wgResourceLoaderMaxage = [
-   'versioned' => 30 * 24 * 60 * 60, // 30 days
-   'unversioned' => 60 * 60, // 60 minutes
-];
-
 $wgImportSources = array(
    'wikipedia' => array('ja', 'en', 'zh'),
    'wikispecies',
