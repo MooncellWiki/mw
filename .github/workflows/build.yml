@@ -41,6 +41,8 @@ jobs:
           push: true
           tags: ${{ steps.mw_meta.outputs.tags }}
           labels: ${{ steps.mw_meta.outputs.labels }}
+          cache-from: type=registry,ref=ghcr.io/mooncellwiki/mw:buildcache
+          cache-to: type=registry,ref=ghcr.io/mooncellwiki/mw:buildcache,mode=max
 
       - name: Extract Caddy Docker Metadata
         id: caddy_meta
@@ -60,4 +62,6 @@ jobs:
           push: true
           tags: ${{ steps.caddy_meta.outputs.tags }}
           labels: ${{ steps.caddy_meta.outputs.labels }}
+          cache-from: type=registry,ref=ghcr.io/mooncellwiki/caddy:buildcache
+          cache-to: type=registry,ref=ghcr.io/mooncellwiki/caddy:buildcache,mode=max
           build-args: VERSION=${{ github.ref_name }}
