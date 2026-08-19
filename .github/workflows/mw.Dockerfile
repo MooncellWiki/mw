@@ -5,6 +5,10 @@ ARG PHP_IMAGE=ghcr.io/mooncellwiki/php:latest
 # 依赖阶段：输入只有 composer 相关文件，改 LocalSettings.php 不会让 vendor 失效。
 # composer.local.json 通过 merge-plugin 引了 66 个 extensions/*/composer.json，
 # pre/post-install hook 的类在 includes/composer/ 下，所以这三份都要先进来。
+#
+# 这一阶段有两份产出：vendor/，以及 extensions/。SemanticMediaWiki、
+# SemanticResultFormats、DynamicPageList3、AWS 不是 submodule，是 composer 装的，
+# composer/installers 按 mediawiki-extension 类型把它们落到 extensions/<Name>/。
 # ---------------------------------------------------------------------------
 FROM ${PHP_IMAGE} AS deps
 WORKDIR /srv
@@ -29,7 +33,9 @@ COPY --chown=www-data:www-data mw-config   ./mw-config
 COPY --from=deps --chown=www-data:www-data /srv/vendor ./vendor
 
 # 温层：扩展 / 皮肤 / 上传目录 / 运维脚本
-COPY --chown=www-data:www-data extensions ./extensions
+# extensions 必须从 deps 取：仓库里的 extensions/ 只有 submodule，缺 composer
+# 装的那 4 个，直接从上下文 COPY 会让 LocalSettings.php 的 wfLoadExtension() 挂掉。
+COPY --from=deps --chown=www-data:www-data /srv/extensions ./extensions
 COPY --chown=www-data:www-data skins      ./skins
 COPY --chown=www-data:www-data images     ./images
 COPY --chown=www-data:www-data scripts    ./scripts
