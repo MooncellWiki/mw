@@ -1,5 +1,13 @@
 /vendor
+/cache
+/tmp
+/tests
+/docs
+/HISTORY
+/RELEASE-NOTES-*
 .*
+**/.git
+**/node_modules
 DEVELOPERS.md
 Gruntfile.js
 package-lock.json
