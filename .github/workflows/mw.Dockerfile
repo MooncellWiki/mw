@@ -24,21 +24,24 @@ RUN composer install --no-dev --no-interaction --no-progress --optimize-autoload
 FROM ${PHP_IMAGE}
 WORKDIR /srv
 
-# 冷层：MediaWiki core，只有升版本时才动
+# 冷层：MediaWiki core，只有升版本时才动。
+# images/ 仓库里只有 README 和 .htaccess，scripts/ 只有一个运维脚本，都常年不动，
+# 排在 vendor 前面——`composer install --optimize-autoloader` 生成的 classmap 含
+# 扩展类，bump 一个 extension submodule 就可能让 vendor 层失效并连带作废后面所有层。
 COPY --chown=www-data:www-data languages   ./languages
 COPY --chown=www-data:www-data includes    ./includes
 COPY --chown=www-data:www-data resources   ./resources
 COPY --chown=www-data:www-data maintenance ./maintenance
 COPY --chown=www-data:www-data mw-config   ./mw-config
+COPY --chown=www-data:www-data images      ./images
+COPY --chown=www-data:www-data scripts     ./scripts
 COPY --from=deps --chown=www-data:www-data /srv/vendor ./vendor
 
-# 温层：扩展 / 皮肤 / 上传目录 / 运维脚本
+# 温层：扩展和皮肤，submodule 一 bump 就变。
 # extensions 必须从 deps 取：仓库里的 extensions/ 只有 submodule，缺 composer
 # 装的那 4 个，直接从上下文 COPY 会让 LocalSettings.php 的 wfLoadExtension() 挂掉。
 COPY --from=deps --chown=www-data:www-data /srv/extensions ./extensions
-COPY --chown=www-data:www-data skins      ./skins
-COPY --chown=www-data:www-data images     ./images
-COPY --chown=www-data:www-data scripts    ./scripts
+COPY --chown=www-data:www-data skins       ./skins
 
 # 热层：入口脚本 + LocalSettings.php，改一次只重传几百 KB。
 # CREDITS / COPYING 被 SpecialVersion.php 读取，composer.lock 被 ComposerLock 读取。
