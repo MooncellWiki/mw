@@ -37,11 +37,12 @@ COPY --chown=www-data:www-data images      ./images
 COPY --chown=www-data:www-data scripts     ./scripts
 COPY --from=deps --chown=www-data:www-data /srv/vendor ./vendor
 
-# 温层：扩展和皮肤，submodule 一 bump 就变。
+# 温层：皮肤和扩展，submodule 一 bump 就变。skins 只有 4 个 submodule，
+# extensions 有 70 个，动得勤得多，所以排在后面。
 # extensions 必须从 deps 取：仓库里的 extensions/ 只有 submodule，缺 composer
 # 装的那 4 个，直接从上下文 COPY 会让 LocalSettings.php 的 wfLoadExtension() 挂掉。
-COPY --from=deps --chown=www-data:www-data /srv/extensions ./extensions
 COPY --chown=www-data:www-data skins       ./skins
+COPY --from=deps --chown=www-data:www-data /srv/extensions ./extensions
 
 # 热层：入口脚本 + LocalSettings.php，改一次只重传几百 KB。
 # CREDITS / COPYING 被 SpecialVersion.php 读取，composer.lock 被 ComposerLock 读取。
