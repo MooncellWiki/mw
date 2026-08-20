@@ -272,6 +272,7 @@ $wgSVGNativeRendering = true;
 wfLoadSkin('MonoBook');
 wfLoadSkin('Timeless');
 wfLoadSkin('Vector');
+wfLoadSkin('Arknights');
 
 wfLoadExtension('Cargo');
 $wgGroupPermissions['cargoadmin']['recreatecargodata'] = true;

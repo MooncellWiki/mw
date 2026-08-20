@@ -281,3 +281,7 @@
 [submodule "extensions/CrawlerProtection"]
 	path = extensions/CrawlerProtection
 	url = https://github.com/mywikis/CrawlerProtection.git
+[submodule "skins/Arknights"]
+	path = skins/Arknights
+	url = https://github.com/MooncellWiki/mediawiki-skins-Arknights
+	branch = master
