@@ -26,7 +26,6 @@
 				"extensions/DeleteBatch/composer.json",
 				"extensions/DeleteUserPages/composer.json",
 				"extensions/Echo/composer.json",
-				"extensions/ExternalData/composer.json",
 				"extensions/Flow/composer.json",
 				"extensions/Gadgets/composer.json",
 				"extensions/HeadScript/composer.json",

@@ -177,9 +177,6 @@
 [submodule "extensions/Cargo"]
 	path = extensions/Cargo
 	url = https://github.com/wikimedia/mediawiki-extensions-Cargo
-[submodule "extensions/ExternalData"]
-	path = extensions/ExternalData
-	url = https://github.com/wikimedia/mediawiki-extensions-ExternalData
 [submodule "extensions/DataMaps"]
 	path = extensions/DataMaps
 	url = https://github.com/alex4401/mediawiki-extensions-DataMaps.git

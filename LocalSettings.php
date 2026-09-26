@@ -539,9 +539,6 @@ wfLoadExtension('DynamicPageList3');
 
 wfLoadSkin('MinervaNeue');
 
-# ExternalData
-wfLoadExtension('ExternalData');
-
 # Elastica
 #wfLoadExtension( 'Elastica' );
 
