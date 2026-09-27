@@ -777,6 +777,18 @@ $wgThumbLimits = null;
 $wgThumbnailNamespaces = null;
 
 /**
+ * Config variable stub for the ThumbnailSteps setting, for use by phpdoc and IDEs.
+ * @see MediaWiki\MainConfigSchema::ThumbnailSteps
+ */
+$wgThumbnailSteps = null;
+
+/**
+ * Config variable stub for the ThumbnailStepsRatio setting, for use by phpdoc and IDEs.
+ * @see MediaWiki\MainConfigSchema::ThumbnailStepsRatio
+ */
+$wgThumbnailStepsRatio = null;
+
+/**
  * Config variable stub for the ThumbnailBuckets setting, for use by phpdoc and IDEs.
  * @see MediaWiki\MainConfigSchema::ThumbnailBuckets
  */
@@ -3124,6 +3136,12 @@ $wgRestAllowCrossOriginCookieAuth = null;
  * @see MediaWiki\MainConfigSchema::SessionSecret
  */
 $wgSessionSecret = null;
+
+/**
+ * Config variable stub for the EnableUnsafeXsltOption setting, for use by phpdoc and IDEs.
+ * @see MediaWiki\MainConfigSchema::EnableUnsafeXsltOption
+ */
+$wgEnableUnsafeXsltOption = null;
 
 /**
  * Config variable stub for the CookieExpiration setting, for use by phpdoc and IDEs.
