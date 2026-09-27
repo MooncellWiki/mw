@@ -1,7 +1,7 @@
 {
 	"require": {
-		"mediawiki/semantic-media-wiki": "~6.0.0",
-		"mediawiki/semantic-result-formats": "~5.1.0",
+		"mediawiki/semantic-media-wiki": "~7.3.0",
+		"mediawiki/semantic-result-formats": "~6.0.0",
 		"universal-omega/dynamic-page-list3": "3.6.4",
 		"edwardspec/mediawiki-aws-s3": "v0.13.1",
 		"sentry/sentry": "^4.17.1"

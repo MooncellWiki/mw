@@ -1,8 +1,8 @@
 # PRTS contributor environment
 
-## PHP 8.1 environment
+## PHP 8.3 environment
 
-The verified development runtime is PHP **8.1.33**. Contributors may use any PHP version
+The verified development runtime is PHP **8.3.35**. Contributors may use any PHP version
 manager or installation method as long as the active CLI runtime and extensions match the
 requirements below. Verify the active runtime before installing dependencies or running
 MediaWiki:
@@ -53,7 +53,7 @@ php -d opcache.enable_cli=1 \
 ```
 
 Do not pass a router script. Install PHP dependencies after activating a compatible PHP
-8.1 runtime:
+8.3 runtime:
 
 ```bash
 composer install

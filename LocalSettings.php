@@ -508,13 +508,25 @@ wfLoadExtension('DeleteBatch');
 $wgGroupPermissions['bureaucrat']['deletebatch'] = false;
 $wgGroupPermissions['sysop']['deletebatch'] = true;
 wfLoadExtension('SemanticMediaWiki');
-enableSemantics($wgCanonicalServer, true);
-$smwgConfigFileDir= __DIR__ . '/etc';
+# SMW 7.x：enableSemantics() 已是 no-op，不再需要调用。
+# $smwgConfigFileDir 在 7.0 起已弃用，只用于 update.php 首次把 etc/.smw.json 迁移进
+# smw_meta 表（迁移后文件会被改名为 .smw.json.migrated），迁移完成后可删除这行。
+$smwgConfigFileDir = __DIR__ . '/etc';
 wfLoadExtension('SemanticResultFormats');
-$smwgDVFeatures = ($smwgDVFeatures & ~SMW_DV_WPV_DTITLE);
+# SMW 7.x 的默认值改为字符串数组，且 LocalSettings 执行时该变量尚未定义（默认值由
+# extension.json 提供），所以要写完整数组：这里是默认值去掉 wpv-display-title。
+$smwgDVFeatures = [
+    'provider-redirect',
+    'monolingual-langcode',
+    'pattern-validation',
+    'time-calendar-model',
+    'preferred-label',
+    'provider-link-hint',
+];
 $smwgQueryResultCacheType = CACHE_MEMCACHED;
 $smwgQueryResultCacheLifetime = 60 * 60 * 24;
-$smwgPageSpecialProperties[] = '_CDAT';
+# merge_strategy 是 provide_default，这里赋值会整体覆盖默认值 ['_MDAT']，所以要把 _MDAT 一起写上。
+$smwgPageSpecialProperties = ['_MDAT', '_CDAT'];
 
 wfLoadExtension('TemplateStyles');
 
