@@ -513,16 +513,12 @@ wfLoadExtension('SemanticMediaWiki');
 # smw_meta 表（迁移后文件会被改名为 .smw.json.migrated），迁移完成后可删除这行。
 $smwgConfigFileDir = __DIR__ . '/etc';
 wfLoadExtension('SemanticResultFormats');
-# SMW 7.x 的默认值改为字符串数组，且 LocalSettings 执行时该变量尚未定义（默认值由
-# extension.json 提供），所以要写完整数组：这里是默认值去掉 wpv-display-title。
-$smwgDVFeatures = [
-    'provider-redirect',
-    'monolingual-langcode',
-    'pattern-validation',
-    'time-calendar-model',
-    'preferred-label',
-    'provider-link-hint',
-];
+# 关闭 wpv-display-title。SMW 7.x 的 DVFeatures 在 extension.json 里没声明 merge_strategy，
+# MW 默认 array_merge 会把默认列表（含 wpv-display-title）合并回来，数组写法无法"去掉"某一项，
+# 所以在 SMW 把配置归一化成 bitmask 之后再清掉这一位。SMW 8.0 移除 SMW_DV_* 常量时需要跟着改。
+$wgHooks['SMW::Settings::BeforeInitializationComplete'][] = static function ( array &$config ) {
+    $config['smwgDVFeatures'] &= ~SMW_DV_WPV_DTITLE;
+};
 $smwgQueryResultCacheType = CACHE_MEMCACHED;
 $smwgQueryResultCacheLifetime = 60 * 60 * 24;
 # merge_strategy 是 provide_default，这里赋值会整体覆盖默认值 ['_MDAT']，所以要把 _MDAT 一起写上。
