@@ -437,6 +437,10 @@ $wgMaxShellMemory = 1048576;
 wfLoadExtension('WikiSEO');
 
 # MobileFrontend
+# 各站可在 etc/config.php（本文件开头就加载）里设 $mcMobileFrontend = false，连同 MinervaNeue 一起不加载。
+# prts 已统一到 Arknights 单皮肤，m. 域名在 Varnish 301 回主域；fgo / mooncell 不设，照旧。
+$mcMobileFrontend ??= true;
+if ( $mcMobileFrontend ) {
 wfLoadExtension('MobileFrontend');
 $wgDefaultMobileSkin = 'minerva';
 $wgMFLazyLoadImages =   [
@@ -453,6 +457,7 @@ $wgMFMobileHeader = "X-Subdomain";
 $wgMFEnableManifest = false;
 $wgMobileUrlCallback = fn ( $domain ) => "m.$domain"; // domain for mobile site
 $wgMFCustomSiteModules = true;
+}
 
 # LabeledSectionTransclusion
 wfLoadExtension('LabeledSectionTransclusion');
@@ -545,7 +550,10 @@ $wgCategoryCollation = 'pinyin';
 # DynamicPageList3
 wfLoadExtension('DynamicPageList3');
 
+# 依赖 MobileFrontend，随上面的 $mcMobileFrontend 开关
+if ( $mcMobileFrontend ) {
 wfLoadSkin('MinervaNeue');
+}
 
 # Elastica
 #wfLoadExtension( 'Elastica' );
