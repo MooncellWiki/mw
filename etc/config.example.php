@@ -23,6 +23,14 @@ $wgDBprefix = 'ak';
 $wgMainCacheType = CACHE_NONE;
 $wgSessionCacheType = CACHE_DB;
 
+// Optional OAuth identity provider. Provision keys and run the database update
+// before serving OAuth traffic; see docs/prts-oauth.md. Never commit real keys.
+$mcOAuthEnabled = false;
+// $wgOAuth2PrivateKey = 'file://' . __DIR__ . '/oauth/private.pem';
+// $wgOAuth2PublicKey = 'file://' . __DIR__ . '/oauth/public.pem';
+// $wgOAuthSecretKey = trim( file_get_contents( __DIR__ . '/oauth/secret' ) );
+// $wgMWOAuthSessionCacheType = CACHE_DB; // Use the shared session cache in production.
+
 // These values are development-only and must never be reused in production.
 $wgSecretKey = getenv( 'PRTS_SECRET_KEY' )
 	?: 'local-only-secret-key-change-before-exposing-this-installation';

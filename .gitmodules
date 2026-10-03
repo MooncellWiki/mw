@@ -283,3 +283,7 @@
 	path = skins/Arknights
 	url = https://github.com/MooncellWiki/mediawiki-skins-Arknights
 	branch = master
+[submodule "extensions/OAuth"]
+	path = extensions/OAuth
+	url = https://github.com/wikimedia/mediawiki-extensions-OAuth
+	branch = REL1_43

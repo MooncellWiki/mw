@@ -46,6 +46,7 @@
 				"extensions/MyVariables/composer.json",
 				"extensions/Nuke/composer.json",
 				"extensions/OATHAuth/composer.json",
+				"extensions/OAuth/composer.json",
 				"extensions/PageImages/composer.json",
 				"extensions/ParserFunctions/composer.json",
 				"extensions/PdfHandler/composer.json",

@@ -300,6 +300,18 @@ wfLoadExtension('Nuke');
 wfLoadExtension('OATHAuth');
 $wgGroupPermissions['user']['oathauth-enable'] = true;
 
+// This image serves several wikis. Enable OAuth per site in etc/config.php
+// after provisioning its keys and database tables; see docs/prts-oauth.md.
+if ( $mcOAuthEnabled ?? false ) {
+	wfLoadExtension( 'OAuth' );
+	$wgOAuth2EnabledGrantTypes = [ 'authorization_code', 'refresh_token' ];
+	$wgOAuth2RequireCodeChallengeForPublicClients = true;
+	$wgOAuthAutoApprove = [];
+	$wgGroupPermissions['sysop']['mwoauthproposeconsumer'] = true;
+	$wgGroupPermissions['sysop']['mwoauthupdateownconsumer'] = true;
+	$wgGroupPermissions['sysop']['mwoauthmanageconsumer'] = true;
+}
+
 wfLoadExtension('PageImages');
 wfLoadExtension('ParserFunctions');
 $wgPFEnableStringFunctions = true;
