@@ -261,6 +261,10 @@ $wgGroupPermissions['bureaucrat']['deleterevision'] = true;
 $wgAddGroups['Dominator'] = array('interface-admin', 'sysop', 'bot', 'Editor', 'checkuser', 'smwadministrator', 'smwcurator', 'widgeteditor', 'Angestellter', 'Inspektor');
 $wgRemoveGroups['Dominator'] = array('interface-admin', 'sysop', 'bot', 'Editor', 'checkuser', 'smwadministrator', 'smwcurator', 'widgeteditor', 'Angestellter', 'Inspektor');
 
+# 保护页面时可单独限制删除（默认只有 create / edit / move / upload）。
+# autoconfirmed 等用户组有 delete 权限，重要页面用 delete=sysop 防误删。
+$wgRestrictionTypes[] = 'delete';
+
 $wgExternalLinkTarget = '_blank';
 
 $wgNativeImageLazyLoading = true;
