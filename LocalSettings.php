@@ -117,6 +117,9 @@ $wgAllowExternalImages = false;
 $wgEnableImageWhitelist = true;
 $wgRestrictDisplayTitle = false;
 $wgForcedRawSMaxage = 3600;
+# 匿名页面在 Varnish 上的缓存时间，默认 18000（5 小时）。编辑会主动 PURGE，
+# 这个值只是 PURGE 丢失或延迟（模板改动走作业队列）时旧内容的存活上限。
+$wgCdnMaxAge = 86400;
 
 # 缩略图最大允许 6000px * 6000px (36000000pixels)
 $wgMaxImageArea = 3.6e7;
