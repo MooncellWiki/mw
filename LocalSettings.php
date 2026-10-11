@@ -572,19 +572,18 @@ wfLoadSkin('MinervaNeue');
 wfLoadExtension('AWS');
 
 # 缩略图回源：各站在 etc/config.php 里设 $wgGenerateThumbnailOnParse = false 后，解析页面时只生成链接，
-# 缩略图第一次被访问时由 OSS 镜像回源到本站的 /thumb/…，交给 thumb_handler.php 生成
+# 缩略图第一次被访问时由 OSS 302 到本站的 /thumb/…，交给 thumb_handler.php 生成
 # （docker-config 的 k8s/README.md「缩略图回源」）。AWS 扩展要用 composer.local.json 里打过补丁的版本，
 # 上游重建 $wgLocalFileRepo 时丢了 transformVia404，这个开关不生效。
-if ( MW_ENTRY_POINT === 'thumb_handler' ) {
-	// 回源请求都来自 OSS 的出口 IP（不公开、不固定），按 IP 限流没有意义；总量由 fpm 的 [thumb] 池限制。
-	unset( $wgRateLimits['renderfile'], $wgRateLimits['renderfile-nonstandard'] );
-}
-// 同一个文件的缩略图同时被多次回源时排队，不重复渲染。timeout 要低于 OSS 回源的 10 秒。
+// 第一次打开一个满是新图标的页面时，一个人一下子要生成很多非标准宽度的缩略图，默认每 30 秒 70 张不够。
+$wgRateLimits['renderfile-nonstandard']['ip'] = [ 300, 30 ];
+$wgRateLimits['renderfile-nonstandard']['user'] = [ 300, 30 ];
+// 同一个文件的缩略图同时被多次请求时排队，不重复渲染。
 $wgPoolCounterConf['FileRender'] = [
 	'class' => MediaWiki\PoolCounter\PoolCounterRedis::class,
 	'servers' => [ 'infra-redis-1:6379' ],
 	'redisConfig' => [],
-	'timeout' => 8,
+	'timeout' => 15,
 	'workers' => 2,
 	'maxqueue' => 20,
 ];
