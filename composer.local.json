@@ -1,9 +1,31 @@
 {
+	"repositories": [
+		{
+			"type": "package",
+			"package": {
+				"name": "edwardspec/mediawiki-aws-s3",
+				"version": "0.13.1-p1",
+				"type": "mediawiki-extension",
+				"license": "GPL-2.0-or-later",
+				"require": {
+					"aws/aws-sdk-php": "^3.67",
+					"composer/installers": "~1.5"
+				},
+				"extra": {
+					"installer-name": "AWS"
+				},
+				"dist": {
+					"type": "zip",
+					"url": "https://codeload.github.com/MooncellWiki/mediawiki-aws-s3/zip/c339a0ed50c72c476f16b6db163234af354f56ed"
+				}
+			}
+		}
+	],
 	"require": {
 		"mediawiki/semantic-media-wiki": "~7.3.0",
 		"mediawiki/semantic-result-formats": "~6.0.0",
 		"universal-omega/dynamic-page-list3": "3.6.4",
-		"edwardspec/mediawiki-aws-s3": "v0.13.1",
+		"edwardspec/mediawiki-aws-s3": "0.13.1-p1",
 		"sentry/sentry": "^4.17.1"
 	},
 	"extra": {

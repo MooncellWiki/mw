@@ -895,50 +895,22 @@
         },
         {
             "name": "edwardspec/mediawiki-aws-s3",
-            "version": "v0.13.1",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/edwardspec/mediawiki-aws-s3.git",
-                "reference": "f85bb579b57f22175ff0cbca7664ad26cacdbb58"
-            },
+            "version": "0.13.1-p1",
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/edwardspec/mediawiki-aws-s3/zipball/f85bb579b57f22175ff0cbca7664ad26cacdbb58",
-                "reference": "f85bb579b57f22175ff0cbca7664ad26cacdbb58",
-                "shasum": ""
+                "url": "https://codeload.github.com/MooncellWiki/mediawiki-aws-s3/zip/c339a0ed50c72c476f16b6db163234af354f56ed"
             },
             "require": {
                 "aws/aws-sdk-php": "^3.67",
                 "composer/installers": "~1.5"
             },
-            "require-dev": {
-                "mediawiki/mediawiki-codesniffer": "42.0.0",
-                "mediawiki/mediawiki-phan-config": "0.14.0",
-                "mediawiki/minus-x": "1.1.0",
-                "php-parallel-lint/php-console-highlighter": "0.5",
-                "php-parallel-lint/php-parallel-lint": "1.2.0"
-            },
             "type": "mediawiki-extension",
             "extra": {
                 "installer-name": "AWS"
             },
-            "notification-url": "https://packagist.org/downloads/",
             "license": [
-                "GPL-2.0+"
-            ],
-            "description": "Allows MediaWiki to use Amazon S3 to store uploaded files.",
-            "support": {
-                "docs": "https://www.mediawiki.org/wiki/Extension:AWS",
-                "issues": "https://github.com/edwardspec/mediawiki-aws-s3/issues",
-                "source": "https://github.com/edwardspec/mediawiki-aws-s3.git"
-            },
-            "funding": [
-                {
-                    "url": "https://www.patreon.com/edwardspec",
-                    "type": "patreon"
-                }
-            ],
-            "time": "2024-12-24T16:32:50+00:00"
+                "GPL-2.0-or-later"
+            ]
         },
         {
             "name": "endroid/qr-code",
