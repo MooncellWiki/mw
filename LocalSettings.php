@@ -578,15 +578,17 @@ wfLoadExtension('AWS');
 // 第一次打开一个满是新图标的页面时，一个人一下子要生成很多非标准宽度的缩略图，默认每 30 秒 70 张不够。
 $wgRateLimits['renderfile-nonstandard']['ip'] = [ 300, 30 ];
 $wgRateLimits['renderfile-nonstandard']['user'] = [ 300, 30 ];
-// 同一个文件的缩略图同时被多次请求时排队，不重复渲染。
+// 同一个文件的缩略图同时被多次请求时排队，不重复渲染。锁按原文件加，同一文件的不同尺寸也会串行。
 $wgPoolCounterConf['FileRender'] = [
 	'class' => MediaWiki\PoolCounter\PoolCounterRedis::class,
 	'servers' => [ 'infra-redis-1:6379' ],
 	'redisConfig' => [],
 	'timeout' => 15,
-	'workers' => 2,
+	'workers' => 1,
 	'maxqueue' => 20,
 ];
+// 大于 10 MiB 的 TIFF 等高成本文件走 FileRenderExpensive，不配就是 PoolCounterNull，完全不排队。
+$wgPoolCounterConf['FileRenderExpensive'] = $wgPoolCounterConf['FileRender'];
 
 wfLoadExtension('CDNCacheBuster');
 
