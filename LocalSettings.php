@@ -436,6 +436,17 @@ $wgVipsOptions = [
 //1GiB
 $wgMaxShellMemory = 1048576;
 
+# 请求超时
+# FPM 的 request_terminate_timeout 是 30 秒，到点直接杀掉 worker，它手里的临时文件
+# （缩略图的 localcopy_* / transform_*）删不掉，会把 tmpfs 的 /tmp 写满。
+# 先让 MediaWiki 在 25 秒时自己超时（装了 excimer，按挂钟时间计），异常正常展开，临时文件随之清理。
+# excimer 只在执行 PHP 时打断得了，卡在一次 shell 调用里不行，所以网页请求里单次 vips 等外部命令最长 20 秒。
+# CLI（runJobs 等维护脚本）两项都不受限。
+$wgRequestTimeLimit = 25;
+if ( MW_ENTRY_POINT !== 'cli' ) {
+$wgMaxShellWallClockTime = 20;
+}
+
 
 # WikiSEO
 wfLoadExtension('WikiSEO');
