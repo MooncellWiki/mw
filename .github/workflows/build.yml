@@ -8,12 +8,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # gerrit.wikimedia.org 对匿名 HTTP clone 返回 403（2026-10 起），VisualEditor 的嵌套子模块 lib/ve
-      # 指向那里，checkout 会在这一步挂掉。改从 GitHub 镜像拉同一个 commit；actions/checkout 的子模块
-      # 更新用的是运行器上的 git，这条全局 insteadOf 对它生效。
-      - name: Clone gerrit submodules from the GitHub mirror
-        run: git config --global url."https://github.com/wikimedia/VisualEditor.git".insteadOf "https://gerrit.wikimedia.org/r/VisualEditor/VisualEditor.git"
-
       - name: Checkout repository
         uses: actions/checkout@v4
         with:

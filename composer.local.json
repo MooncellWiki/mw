@@ -92,7 +92,6 @@
 				"extensions/Variables/composer.json",
 				"extensions/VectorMenuSidebar/composer.json",
 				"extensions/VipsScaler/composer.json",
-				"extensions/VisualEditor/composer.json",
 				"extensions/Widgets/composer.json",
 				"extensions/WikiEditor/composer.json",
 				"extensions/WikiSEO/composer.json"

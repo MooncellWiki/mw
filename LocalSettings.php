@@ -318,8 +318,6 @@ wfLoadExtension('SyntaxHighlight_GeSHi');
 wfLoadExtension('TemplateData');
 wfLoadExtension('TextExtracts');
 wfLoadExtension('TitleBlacklist');
-# Disabled due to unexpectedly high load
-# wfLoadExtension( 'VisualEditor' );
 wfLoadExtension('WikiEditor');
 wfLoadExtension('Scribunto');
 $wgScribuntoDefaultEngine = 'luasandbox';
