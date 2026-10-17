@@ -582,6 +582,25 @@ wfLoadSkin('MinervaNeue');
 
 wfLoadExtension('AWS');
 
+# 缩略图回源：各站在 etc/config.php 里设 $wgGenerateThumbnailOnParse = false 后，解析页面时只生成链接，
+# 缩略图第一次被访问时由 OSS 302 到本站的 /thumb/…，交给 thumb_handler.php 生成
+# （docker-config 的 k8s/README.md「缩略图回源」）。AWS 扩展要用 composer.local.json 里打过补丁的版本，
+# 上游重建 $wgLocalFileRepo 时丢了 transformVia404，这个开关不生效。
+// 第一次打开一个满是新图标的页面时，一个人一下子要生成很多非标准宽度的缩略图，默认每 30 秒 70 张不够。
+$wgRateLimits['renderfile-nonstandard']['ip'] = [ 300, 30 ];
+$wgRateLimits['renderfile-nonstandard']['user'] = [ 300, 30 ];
+// 同一个文件的缩略图同时被多次请求时排队，不重复渲染。锁按原文件加，同一文件的不同尺寸也会串行。
+$wgPoolCounterConf['FileRender'] = [
+	'class' => MediaWiki\PoolCounter\PoolCounterRedis::class,
+	'servers' => [ 'infra-redis-1:6379' ],
+	'redisConfig' => [],
+	'timeout' => 15,
+	'workers' => 1,
+	'maxqueue' => 20,
+];
+// 大于 10 MiB 的 TIFF 等高成本文件走 FileRenderExpensive，不配就是 PoolCounterNull，完全不排队。
+$wgPoolCounterConf['FileRenderExpensive'] = $wgPoolCounterConf['FileRender'];
+
 wfLoadExtension('CDNCacheBuster');
 
 # CrawlerProtection
