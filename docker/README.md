@@ -2,7 +2,7 @@
 
 `.github/workflows/build.yml` 在推送 `v*.*.*-*` 标签时，依次构建并发布：
 
-1. `ghcr.io/mooncellwiki/php`：PHP 8.3.35 FPM、扩展、Composer 和 PHP/FPM 配置，构建上下文为 `docker/php/`。
+1. `ghcr.io/mooncellwiki/php`：PHP 8.3 FPM、扩展、Composer 和 PHP/FPM 配置，构建上下文为 `docker/php/`。
 2. `ghcr.io/mooncellwiki/mw`：通过 `PHP_IMAGE` 构建参数使用上一步得到的 PHP 镜像 digest。
 3. `ghcr.io/mooncellwiki/caddy`：通过 `MW_IMAGE` 构建参数，从本次推送的 MediaWiki 镜像（按 digest）提取静态资源。
 

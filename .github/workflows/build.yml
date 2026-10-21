@@ -34,7 +34,7 @@ jobs:
         run: |
           tag="tree-$(git rev-parse --short=12 HEAD:docker/php)"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "php_version=$(sed -n 's/^FROM php:\([0-9.]*\)-.*/\1/p' docker/php/Dockerfile)" >> "$GITHUB_OUTPUT"
+          echo "php_version=$(sed -n -e 's/^FROM php:\([0-9.]*\)-.*/\1/p' -e 's/^ENV PHP_VERSION \([0-9.]*\)$/\1/p' docker/php/Dockerfile | head -n 1)" >> "$GITHUB_OUTPUT"
           if digest=$(docker buildx imagetools inspect "ghcr.io/mooncellwiki/php:$tag" --format '{{.Manifest.Digest}}' 2>/dev/null); then
             echo "php:$tag 已存在（$digest），跳过构建"
             echo "digest=$digest" >> "$GITHUB_OUTPUT"

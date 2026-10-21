@@ -24,7 +24,7 @@ RUN set -eux; \
     find /srv -mindepth 2 -type d -empty -delete; \
     mkdir -p /srv/resources /srv/extensions /srv/skins /srv/images
 
-FROM caddy:2.11.4
+FROM caddy:2.11.7@sha256:685ae3d7c34d9b5f8caeddc5d14051db7bbd88ff1f5a2fa0c16bd8ca328fb7af
 WORKDIR /srv
 COPY --from=static --chown=root:root /srv/resources   /srv/resources
 COPY --from=static --chown=root:root /srv/extensions  /srv/extensions
