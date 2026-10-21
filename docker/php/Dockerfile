@@ -1,36 +1,48 @@
-FROM php:8.3.35-fpm
+# syntax=docker/dockerfile:1.7
+# 基础镜像按 digest 固定：Docker Hub 会给同一个 8.3.35-fpm 标签重新推送带 Debian 更新的版本，
+# 不固定的话同一份 Dockerfile 每次构建出来都不一样。升级（包括只为拿 Debian 安全更新）时改这里：
+#   docker buildx imagetools inspect php:8.3.35-fpm --format '{{.Manifest.Digest}}'
+FROM php:8.3.35-fpm@sha256:d39c9597ccbf6dd86be11e933831e37c6f5fd7719a4571c569d7d208e45e73f8
 ENV TZ=Asia/Shanghai
 
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
-ADD https://github.com/mlocati/docker-php-extension-installer/releases/download/2.12.0/install-php-extensions /usr/local/bin/
+# 升级时一起改 checksum：curl -fsSL <url> | sha256sum
+ADD --checksum=sha256:3f49c71fa66c79b8b2b96bc0ce92885dafd7946f3b5a46f545b390d6f1617e2c \
+    https://github.com/mlocati/docker-php-extension-installer/releases/download/2.12.0/install-php-extensions /usr/local/bin/
 
+# PECL 扩展和 Composer 写死版本，不写的话每次构建装的是 PECL 上当时最新的版本。
+# 其余扩展随 PHP 源码，版本跟着上面的 FROM 走。
 RUN chmod +x /usr/local/bin/install-php-extensions && \
     install-php-extensions \
-    apcu \
+    apcu-5.1.28 \
     bcmath \
     calendar \
     gd \
     gettext \
     intl \
-    luasandbox \
+    luasandbox-4.1.3 \
     mysqli \
-    memcached \
+    memcached-3.4.0 \
     pcntl \
     pdo_mysql \
-    redis \
+    redis-6.3.0 \
     shmop \
     soap \
     sockets \
     sysvsem \
-    xmlrpc \
+    xmlrpc-1.0.0RC3 \
     xsl \
     zip \
     opcache \
-    excimer \
-    @composer
+    excimer-1.2.6 \
+    @composer-2.10.3
 
-RUN apt-get update && apt-get install -y python3 telnet libvips-tools && \
+# install-php-extensions 结束时会删掉 apt 的索引，所以这里要重新 update。
+# ghostscript 和 fonts-droid-fallback（CJK 字体）原来是作为推荐依赖带进来的，PdfHandler 默认用 gs 渲染 PDF，
+# 关掉推荐依赖以后要显式装。
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python3 telnet libvips-tools ghostscript fonts-droid-fallback && \
     rm -rf /var/lib/apt/lists/*
 
 COPY ./config/php.ini /usr/local/etc/php/conf.d/php.ini
