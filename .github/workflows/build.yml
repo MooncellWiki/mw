@@ -4,6 +4,10 @@ on:
   push:
     tags: ["v*.*.*-*"]
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -23,6 +27,52 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # PHP 镜像按 docker/php 目录的 git tree 哈希打 tag。这个目录没变，就直接用已经推送过的镜像，不重新构建：
+      # MediaWiki 发版不会顺带换掉 PHP 和扩展，也不依赖 PECL、Debian 源在发版那一刻可用。
+      - name: Look up PHP image
+        id: php_lookup
+        run: |
+          tag="tree-$(git rev-parse --short=12 HEAD:docker/php)"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "php_version=$(sed -n -e 's/^FROM php:\([0-9.]*\)-.*/\1/p' -e 's/^ENV PHP_VERSION \([0-9.]*\)$/\1/p' docker/php/Dockerfile | head -n 1)" >> "$GITHUB_OUTPUT"
+          if digest=$(docker buildx imagetools inspect "ghcr.io/mooncellwiki/php:$tag" --format '{{.Manifest.Digest}}' 2>/dev/null); then
+            echo "php:$tag 已存在（$digest），跳过构建"
+            echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Extract PHP Docker Metadata
+        id: php_meta
+        if: steps.php_lookup.outputs.digest == ''
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/mooncellwiki/php
+          flavor: |
+            latest=false
+          tags: |
+            type=raw,value=${{ steps.php_lookup.outputs.tag }}
+            type=sha
+          labels: |
+            org.opencontainers.image.title=php
+            org.opencontainers.image.description=MooncellWiki 的 PHP-FPM 基础镜像（docker/php）
+            org.opencontainers.image.version=${{ steps.php_lookup.outputs.php_version }}
+
+      - name: Build and push PHP image
+        id: php_build
+        if: steps.php_lookup.outputs.digest == ''
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker/php
+          push: true
+          tags: ${{ steps.php_meta.outputs.tags }}
+          labels: ${{ steps.php_meta.outputs.labels }}
+          cache-from: type=registry,ref=ghcr.io/mooncellwiki/php:buildcache
+          cache-to: type=registry,ref=ghcr.io/mooncellwiki/php:buildcache,mode=max
+
+      - name: Resolve PHP image digest
+        id: php
+        run: echo "digest=${{ steps.php_lookup.outputs.digest || steps.php_build.outputs.digest }}" >> "$GITHUB_OUTPUT"
+
       - name: Extract mw Docker Metadata
         id: mw_meta
         uses: docker/metadata-action@v5
@@ -32,9 +82,14 @@ jobs:
           tags: |
             type=semver,pattern={{raw}}
             type=sha
+          # PHP 镜像不打发布标签，从这里查某个发布用的是哪个 PHP 镜像。
+          labels: |
+            org.opencontainers.image.base.name=ghcr.io/mooncellwiki/php:${{ steps.php_lookup.outputs.tag }}
+            org.opencontainers.image.base.digest=${{ steps.php.outputs.digest }}
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+      - name: Build and push MediaWiki image
+        id: mw_build
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: .github/workflows/mw.Dockerfile
@@ -43,6 +98,7 @@ jobs:
           labels: ${{ steps.mw_meta.outputs.labels }}
           cache-from: type=registry,ref=ghcr.io/mooncellwiki/mw:buildcache
           cache-to: type=registry,ref=ghcr.io/mooncellwiki/mw:buildcache,mode=max
+          build-args: PHP_IMAGE=ghcr.io/mooncellwiki/php@${{ steps.php.outputs.digest }}
 
       - name: Extract Caddy Docker Metadata
         id: caddy_meta
@@ -54,8 +110,8 @@ jobs:
             type=semver,pattern={{raw}}
             type=sha
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+      - name: Build and push Caddy image
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: .github/workflows/caddy.Dockerfile
@@ -64,4 +120,17 @@ jobs:
           labels: ${{ steps.caddy_meta.outputs.labels }}
           cache-from: type=registry,ref=ghcr.io/mooncellwiki/caddy:buildcache
           cache-to: type=registry,ref=ghcr.io/mooncellwiki/caddy:buildcache,mode=max
-          build-args: VERSION=${{ github.ref_name }}
+          build-args: MW_IMAGE=ghcr.io/mooncellwiki/mw@${{ steps.mw_build.outputs.digest }}
+
+      # latest 等三个镜像都推送成功后才动，并且只跟仓库里最新的发布标签走：
+      # 重跑旧标签的 workflow、在旧提交上补打标签、两个标签前后脚推送，都不会让 latest 退回旧版本。
+      - name: Point php:latest at this release
+        env:
+          PHP_DIGEST: ${{ steps.php.outputs.digest }}
+        run: |
+          newest=$(git ls-remote --tags --refs origin 'v*.*.*-*' | sed 's|.*refs/tags/||' | sort -V | tail -n 1)
+          if [ "$newest" != "$GITHUB_REF_NAME" ]; then
+            echo "最新的发布标签是 $newest，不是 $GITHUB_REF_NAME，php:latest 不变"
+            exit 0
+          fi
+          docker buildx imagetools create -t ghcr.io/mooncellwiki/php:latest "ghcr.io/mooncellwiki/php@$PHP_DIGEST"

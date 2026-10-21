@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1.7
-ARG VERSION
-FROM ghcr.io/mooncellwiki/mw:${VERSION} AS mw
+# 本次发布刚推送的 MediaWiki 镜像，按 digest 传进来（build.yml），不按会被覆盖的标签取。
+ARG MW_IMAGE
+FROM ${MW_IMAGE} AS mw
 
 # ---------------------------------------------------------------------------
 # 生产 Caddyfile 里 PHP 走的是裸 `reverse_proxy + transport fastcgi`（不是
@@ -23,7 +24,7 @@ RUN set -eux; \
     find /srv -mindepth 2 -type d -empty -delete; \
     mkdir -p /srv/resources /srv/extensions /srv/skins /srv/images
 
-FROM caddy:2.11.4
+FROM caddy:2.11.7@sha256:685ae3d7c34d9b5f8caeddc5d14051db7bbd88ff1f5a2fa0c16bd8ca328fb7af
 WORKDIR /srv
 COPY --from=static --chown=root:root /srv/resources   /srv/resources
 COPY --from=static --chown=root:root /srv/extensions  /srv/extensions
