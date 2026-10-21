@@ -4,6 +4,10 @@ on:
   push:
     tags: ["v*.*.*-*"]
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -23,6 +27,28 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Extract PHP Docker Metadata
+        id: php_meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/mooncellwiki/php
+          tags: |
+            type=raw,value=latest
+            type=semver,pattern={{raw}}
+            type=sha
+
+      - name: Build and push PHP image
+        id: php_build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker/php
+          push: true
+          tags: ${{ steps.php_meta.outputs.tags }}
+          labels: ${{ steps.php_meta.outputs.labels }}
+          cache-from: type=registry,ref=ghcr.io/mooncellwiki/php:buildcache
+          cache-to: type=registry,ref=ghcr.io/mooncellwiki/php:buildcache,mode=max
+
       - name: Extract mw Docker Metadata
         id: mw_meta
         uses: docker/metadata-action@v5
@@ -33,8 +59,8 @@ jobs:
             type=semver,pattern={{raw}}
             type=sha
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+      - name: Build and push MediaWiki image
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: .github/workflows/mw.Dockerfile
@@ -43,6 +69,7 @@ jobs:
           labels: ${{ steps.mw_meta.outputs.labels }}
           cache-from: type=registry,ref=ghcr.io/mooncellwiki/mw:buildcache
           cache-to: type=registry,ref=ghcr.io/mooncellwiki/mw:buildcache,mode=max
+          build-args: PHP_IMAGE=ghcr.io/mooncellwiki/php@${{ steps.php_build.outputs.digest }}
 
       - name: Extract Caddy Docker Metadata
         id: caddy_meta
@@ -54,8 +81,8 @@ jobs:
             type=semver,pattern={{raw}}
             type=sha
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+      - name: Build and push Caddy image
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: .github/workflows/caddy.Dockerfile
