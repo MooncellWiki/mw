@@ -12,7 +12,7 @@
   所以 `docker/php/` 不变时，各次发布用的是同一个 PHP 镜像。
 - `sha-<commit>`：构建这个 PHP 镜像的提交。只有真正构建时才打。
 - `latest`：三个镜像都推送成功后，并且本次标签是仓库里最新的发布标签时，才指向本次用的 PHP 镜像。
-  `mw.Dockerfile` 的默认 `PHP_IMAGE` 和 base-images 的 devcontainer 用的是它。
+  `mw.Dockerfile` 的默认 `PHP_IMAGE` 用的是它。
 
 PHP 镜像不打 MediaWiki 的发布标签。某个发布用的是哪个 PHP 镜像，看 mw 镜像的
 `org.opencontainers.image.base.name` / `org.opencontainers.image.base.digest` 标签。
@@ -28,17 +28,25 @@ install-php-extensions 按 checksum。升级时改对应的值（取值方法见
 
 ## PHP/FPM 配置和线上的关系
 
-线上（docker-config 的 `k8s/base/web.yaml`）把各站的 `php.ini`、`php-fpm.conf` 以 ConfigMap 挂到
-`/usr/local/etc/php/conf.d/php.ini`、`/usr/local/etc/php-fpm.d/zzz-docker.conf`，
-和镜像里这两个文件是同一路径，整份替换。所以 `docker/php/config/` 只影响构建（`composer install`）、
-devcontainer 等没挂配置的场景，改线上配置要去 docker-config。
+配置分两层，同名设置以后加载的为准：
+
+| 文件 | 镜像里的路径 | 管什么 |
+|---|---|---|
+| `docker/php/config/php.ini` | `conf.d/50-mooncell.ini` | 三站通用、跟代码相关的设置：`disable_functions`、上传大小、`error_reporting` 等 |
+| `docker/php/config/php-fpm.conf` | `php-fpm.d/zz-mooncell.conf` | 三站通用的 FPM 设置：日志、`[www]` 的超时 |
+| docker-config 的 `k8s/overlays/<站>/php.ini` | 挂到 `conf.d/php.ini` | 各站的 APCu、OPcache 内存大小等 |
+| docker-config 的 `k8s/overlays/<站>/php-fpm.conf` | 挂到 `php-fpm.d/zzz-docker.conf` | 进程数、监听地址、状态页、`[thumb]` / `[upload]` 池等跟部署相关的设置 |
+
+两边的文件名决定了加载顺序（`50-mooncell.ini` 在 `php.ini` 之前，`zz-mooncell.conf` 在 `zzz-docker.conf` 之前），
+改名时要保持这个顺序。改通用设置走这个仓库发版，改各站的容量走 docker-config。
+没挂 docker-config 的场景（构建时的 `composer install`、本地 `docker run`）只有通用设置，其余是 PHP 和官方镜像的默认值。
 
 ## 迁移
 
-PHP 构建及 `php/config/` 从 `MooncellWiki/base-images` 迁入，扩展列表保持一致，扩展版本固定为迁移时线上镜像里的版本。
+PHP 构建从 `MooncellWiki/base-images` 迁入，扩展列表保持一致，扩展版本固定为迁移时线上镜像里的版本。
 切换发布仓库时，需要在 GitHub 的 `MooncellWiki/php` package 设置中，
 通过 **Manage Actions access** 授予 `MooncellWiki/mw` **Write** 权限；
-工作流已声明 `packages: write`。迁移完成后应停用旧仓库的 PHP 发布工作流，避免继续覆盖 `latest`。
+工作流已声明 `packages: write`。迁移完成后删掉旧仓库的 PHP 构建和 php devcontainer（base-images 里另有 PR），避免继续覆盖 `latest`。
 参见 [GitHub 的工作流包权限说明](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility#ensuring-workflow-access-to-your-package)。
 
 ## 本地构建

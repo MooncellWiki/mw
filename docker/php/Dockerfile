@@ -45,5 +45,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3 telnet libvips-tools ghostscript fonts-droid-fallback && \
     rm -rf /var/lib/apt/lists/*
 
-COPY ./config/php.ini /usr/local/etc/php/conf.d/php.ini
-COPY ./config/php-fpm.conf /usr/local/etc/php-fpm.d/zzz-docker.conf
+# 三站通用的设置。线上 docker-config 把各站自己的 php.ini、php-fpm.conf 挂到 conf.d/php.ini、php-fpm.d/zzz-docker.conf，
+# 按文件名排在这两个文件后面加载，同名设置以各站为准。
+COPY ./config/php.ini /usr/local/etc/php/conf.d/50-mooncell.ini
+COPY ./config/php-fpm.conf /usr/local/etc/php-fpm.d/zz-mooncell.conf
