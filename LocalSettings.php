@@ -19,6 +19,7 @@ if ( !defined( 'MEDIAWIKI' ) ) {
 	exit;
 }
 require_once __DIR__ . '/etc/config.php';
+require_once __DIR__ . '/LoggingSettings.php';
 
 $wgNamespaceRobotPolicies[NS_USER] = 'noindex';
 $wgNamespaceRobotPolicies[NS_USER_TALK] = 'noindex';
