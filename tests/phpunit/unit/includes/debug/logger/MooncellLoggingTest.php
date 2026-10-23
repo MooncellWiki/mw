@@ -12,16 +12,29 @@ use RuntimeException;
  */
 class MooncellLoggingTest extends \MediaWikiUnitTestCase {
 
-	private function loadConfig(): array {
-		global $wgDBerrorLog, $wgPropagateErrors, $wgMWLoggerDefaultSpi;
-
-		require MW_INSTALL_PATH . '/LoggingSettings.php';
-		$this->assertFalse( $wgDBerrorLog );
-		$this->assertFalse( $wgPropagateErrors );
-		return $wgMWLoggerDefaultSpi['args'][0];
+	/**
+	 * Load the settings in a local scope. Writing the real globals would leak the production logger
+	 * into later tests: MediaWikiUnitTestCase restores bootstrap globals by reference.
+	 */
+	private function loadSettings( string $debugLogFile = '' ): array {
+		return ( static function () use ( $debugLogFile ): array {
+			// phpcs:disable MediaWiki.VariableAnalysis.MisleadingGlobalNames
+			$wgDebugLogFile = $debugLogFile;
+			$wgDebugLogGroups = [];
+			$wgExtensionFunctions = [];
+			// phpcs:enable
+			require MW_INSTALL_PATH . '/LoggingSettings.php';
+			return get_defined_vars();
+		} )();
 	}
 
-	private function newSpi( $stream ): MonologSpi {
+	private function loadConfig(): array {
+		$settings = $this->loadSettings();
+		$this->assertFalse( $settings['wgDBerrorLog'] );
+		return $settings['wgMWLoggerDefaultSpi']['args'][0];
+	}
+
+	private function newSpi( $stream, ?array $serverData = null ): MonologSpi {
 		// WikiProcessor deliberately reads only these globals, without using LBFactory.
 		$GLOBALS['wgDBname'] = 'logging-test';
 		$GLOBALS['wgDBmwschema'] = null;
@@ -33,7 +46,16 @@ class MooncellLoggingTest extends \MediaWikiUnitTestCase {
 
 		$config = $this->loadConfig();
 		$config['handlers']['stderr']['args'][0] = $stream;
+		$config['processors']['web']['args'][0] = $serverData;
 		return new MonologSpi( $config );
+	}
+
+	private function readLines( $stream ): array {
+		rewind( $stream );
+		$output = stream_get_contents( $stream );
+		fclose( $stream );
+		$this->assertStringEndsWith( "\n", $output );
+		return explode( "\n", substr( $output, 0, -1 ) );
 	}
 
 	public function testWarningsAndErrorsFromAnyChannelAreStructured(): void {
@@ -64,6 +86,48 @@ class MooncellLoggingTest extends \MediaWikiUnitTestCase {
 		$this->assertSame( $records[0]['reqId'], $records[1]['reqId'] );
 		$this->assertArrayHasKey( '@timestamp', $records[0] );
 		$this->assertArrayNotHasKey( 'cli_argv', $records[0] );
+		$this->assertArrayNotHasKey( 'truncated', $records[0] );
+	}
+
+	public function testRecordsIncludeTheRequestButNotTheClientIp(): void {
+		$stream = fopen( 'php://memory', 'w+' );
+		$spi = $this->newSpi( $stream, [
+			'REQUEST_URI' => '/api.php?action=parse',
+			'REQUEST_METHOD' => 'POST',
+			'SERVER_NAME' => 'prts.wiki',
+			'REMOTE_ADDR' => '203.0.113.7',
+			'HTTP_REFERER' => 'https://prts.wiki/w/Example',
+		] );
+		$spi->getLogger( 'DBPerformance' )->warning( 'Expectation not met' );
+
+		$record = json_decode( $this->readLines( $stream )[0], true, 512, JSON_THROW_ON_ERROR );
+		$this->assertSame( '/api.php?action=parse', $record['url'] );
+		$this->assertSame( 'POST', $record['http_method'] );
+		$this->assertSame( 'prts.wiki', $record['server'] );
+		$this->assertArrayNotHasKey( 'ip', $record );
+		$this->assertArrayNotHasKey( 'referrer', $record );
+	}
+
+	public function testOversizedRecordsStayOnOneJsonLine(): void {
+		$stream = fopen( 'php://memory', 'w+' );
+		$spi = $this->newSpi( $stream );
+		$spi->getLogger( 'exception' )->error( 'Deep recursion', [
+			'exception' => new RuntimeException( str_repeat( 'frame ', 20000 ) ),
+		] );
+		$spi->getLogger( 'extension-example' )->warning( 'Many fields',
+			array_fill_keys( range( 1, 800 ), str_repeat( 'x', 1000 ) ) );
+
+		$lines = $this->readLines( $stream );
+		$this->assertCount( 2, $lines );
+		foreach ( $lines as $line ) {
+			$this->assertLessThan( 60000, strlen( $line ) );
+		}
+		$records = array_map( static fn ( $line ) => json_decode( $line, true, 512, JSON_THROW_ON_ERROR ), $lines );
+		$this->assertSame( [ true, true ], array_column( $records, 'truncated' ) );
+		$this->assertSame( [ 'Deep recursion', 'Many fields' ], array_column( $records, 'message' ) );
+		$this->assertStringStartsWith( 'frame frame', $records[0]['context_exception']['message'] );
+		$this->assertSame( 'logging-test', $records[1]['wiki'] );
+		$this->assertArrayNotHasKey( 'context_1', $records[1] );
 	}
 
 	public function testExceptionsKeepRedactedStacksWithoutDuplicateOrSilencedEvents(): void {
@@ -83,7 +147,8 @@ class MooncellLoggingTest extends \MediaWikiUnitTestCase {
 		$spi = $this->newSpi( $stream );
 		$spi->getLogger( 'exception' )->error( $exception->getMessage(), [ 'exception' => $exception ] );
 		$spi->getLogger( 'exception-json' )->error( 'duplicate exception' );
-		$spi->getLogger( 'silenced-error' )->warning( 'suppressed PHP warning' );
+		// MWExceptionHandler logs @-suppressed errors at DEBUG.
+		$spi->getLogger( 'silenced-error' )->debug( 'suppressed PHP warning' );
 		rewind( $stream );
 		$output = stream_get_contents( $stream );
 		fclose( $stream );
@@ -97,6 +162,27 @@ class MooncellLoggingTest extends \MediaWikiUnitTestCase {
 		$this->assertSame( $exception->getMessage(), $record['context_exception']['message'] );
 		$this->assertStringContainsString( __FILE__, $record['context_exception']['trace'] );
 		$this->assertSame( 'Underlying failure', $record['context_exception']['previous']['message'] );
+	}
+
+	public function testPhpStopsLoggingErrorsOnceMediaWikiHandlesThem(): void {
+		$settings = $this->loadSettings();
+		// $wgPropagateErrors must stay true so that PHP still fills error_get_last().
+		$this->assertArrayNotHasKey( 'wgPropagateErrors', $settings );
+		$this->assertCount( 1, $settings['wgExtensionFunctions'] );
+		$oldLogErrors = ini_get( 'log_errors' );
+		try {
+			$settings['wgExtensionFunctions'][0]();
+			$this->assertSame( '0', ini_get( 'log_errors' ) );
+		} finally {
+			ini_set( 'log_errors', $oldLogErrors );
+		}
+	}
+
+	public function testDebugLogFileKeepsTheLegacyLogger(): void {
+		$settings = $this->loadSettings( '/tmp/debug.log' );
+		$this->assertArrayNotHasKey( 'wgMWLoggerDefaultSpi', $settings );
+		$this->assertSame( [], $settings['wgExtensionFunctions'] );
+		$this->assertFalse( $settings['wgDBerrorLog'] );
 	}
 
 	public function testPhpConfigurationKeepsWarningsAndNativeErrorLogging(): void {
