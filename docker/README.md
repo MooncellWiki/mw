@@ -2,16 +2,19 @@
 
 `.github/workflows/build.yml` 在推送 `v*.*.*-*` 标签时，依次构建并发布：
 
-1. `ghcr.io/mooncellwiki/php`：PHP 8.3 FPM、扩展、Composer 和 PHP/FPM 配置，构建上下文为 `docker/php/`。
+1. `ghcr.io/mooncellwiki/php`：PHP 8.3 FPM、扩展、Composer、PHP/FPM 配置和 Caddy，构建上下文为 `docker/php/`。
 2. `ghcr.io/mooncellwiki/mw`：通过 `PHP_IMAGE` 构建参数使用上一步得到的 PHP 镜像 digest。
-3. `ghcr.io/mooncellwiki/caddy`：通过 `MW_IMAGE` 构建参数，从本次推送的 MediaWiki 镜像（按 digest）提取静态资源。
+
+线上 web pod 里的 php-fpm 和 caddy 两个容器都用 mw 镜像（docker-config 的 `k8s/base/web.yaml`），发版只换一个标签。
+caddy 容器看得到镜像里完整的 `/srv`，哪些文件能被直接访问由 docker-config 的 `k8s/base/Caddyfile` 里的白名单决定。
+以前单独构建的 `ghcr.io/mooncellwiki/caddy` 不再更新，旧标签留着供回退。
 
 ## PHP 镜像的标签
 
 - `tree-<哈希>`：`docker/php/` 目录的 git tree 哈希。发版时先查这个标签，已存在就直接复用、不重新构建，
   所以 `docker/php/` 不变时，各次发布用的是同一个 PHP 镜像。
 - `sha-<commit>`：构建这个 PHP 镜像的提交。只有真正构建时才打。
-- `latest`：三个镜像都推送成功后，并且本次标签是仓库里最新的发布标签时，才指向本次用的 PHP 镜像。
+- `latest`：两个镜像都推送成功后，并且本次标签是仓库里最新的发布标签时，才指向本次用的 PHP 镜像。
   `mw.Dockerfile` 的默认 `PHP_IMAGE` 用的是它。
 
 PHP 镜像不打 MediaWiki 的发布标签。某个发布用的是哪个 PHP 镜像，看 mw 镜像的
@@ -19,9 +22,9 @@ PHP 镜像不打 MediaWiki 的发布标签。某个发布用的是哪个 PHP 镜
 
 base-images 时期的 `0.x` 标签（如 `0.2.0`、`0.2`）不再更新，需要固定版本时改用 `tree-<哈希>` 或 digest。
 
-## 升级 PHP、扩展或系统包
+## 升级 PHP、扩展、Caddy 或系统包
 
-`docker/php/Dockerfile` 里的版本都是写死的：基础镜像按 digest、PECL 扩展和 Composer 按版本号、
+`docker/php/Dockerfile` 里的版本都是写死的：基础镜像和 Caddy 按 digest、PECL 扩展和 Composer 按版本号、
 install-php-extensions 按 checksum。升级时改对应的值（取值方法见 Dockerfile 里的注释）。
 只想拿 Debian 安全更新时，把基础镜像的 digest 换成同一标签的最新 digest 即可。
 改了 `docker/php/` 下任何文件，tree 哈希就会变，下一次发版自动重新构建。
@@ -57,6 +60,7 @@ PHP 构建从 `MooncellWiki/base-images` 迁入，扩展列表保持一致，扩
 docker build -t prts-php:local docker/php
 docker run --rm prts-php:local php -v
 docker run --rm prts-php:local php-fpm -t
+docker run --rm prts-php:local caddy version
 
 docker build --build-arg PHP_IMAGE=prts-php:local \
   -f .github/workflows/mw.Dockerfile -t prts-mw:local .
