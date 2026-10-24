@@ -23,12 +23,12 @@ $wgDBprefix = 'ak';
 $wgMainCacheType = CACHE_NONE;
 $wgSessionCacheType = CACHE_DB;
 
-// Extension:OAuth is always loaded (LocalSettings.php). Run maintenance/run.php update once to
-// create its tables, or Special:RecentChanges and other tag listings fail. Keys are only needed
-// to try the OAuth flow locally; generate local-only ones:
+// Optional OAuth provider (Extension:OAuth), off by default. Before turning it on, generate
+// local-only keys and run maintenance/run.php update to create the OAuth tables:
 //   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out etc/oauth/private.pem
 //   openssl pkey -in etc/oauth/private.pem -pubout -out etc/oauth/public.pem
 // Production keys live in docker-config's secret.php, never in this repository.
+$mcOAuthEnabled = false;
 // $wgOAuth2PrivateKey = file_get_contents( __DIR__ . '/oauth/private.pem' );
 // $wgOAuth2PublicKey = file_get_contents( __DIR__ . '/oauth/public.pem' );
 // $wgOAuthSecretKey = 'local-only-oauth-secret-key';

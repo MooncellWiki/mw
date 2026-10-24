@@ -305,20 +305,23 @@ wfLoadExtension('OATHAuth');
 $wgGroupPermissions['user']['oathauth-enable'] = true;
 
 # OAuth：让 MCP 等外部应用经用户授权、以用户本人的身份调用 API，部署步骤见 docker-config 仓库的 docs/wiki/oauth.md。
-# 和上面的 OATHAuth（两步验证）不是一个东西。三站都加载：上这个镜像之前，各站的库里要先有 OAuth 的表，
-# 否则最近更改等列出标签的页面会 500；签发令牌用的密钥在各站的 secret.php。
-wfLoadExtension( 'OAuth' );
-# 非 owner-only 应用的注册表单只给授权码和刷新令牌两种，去掉 client_credentials（应用不经用户、直接以注册人身份拿令牌）；
-# owner-only 应用不受这里影响，固定用 client_credentials。
-# 不能直接赋值：extension.json 里的数组默认值会和这里的值 array_merge，client_credentials 还在。等扩展注册完再覆盖。
-$wgExtensionFunctions[] = static function () {
-	global $wgOAuth2EnabledGrantTypes;
-	$wgOAuth2EnabledGrantTypes = [ 'authorization_code', 'refresh_token' ];
-};
-# 应用只由管理员注册、审批，不自动批准（$wgOAuthAutoApprove 保持默认的空数组）。
-$wgGroupPermissions['sysop']['mwoauthproposeconsumer'] = true;
-$wgGroupPermissions['sysop']['mwoauthupdateownconsumer'] = true;
-$wgGroupPermissions['sysop']['mwoauthmanageconsumer'] = true;
+# 和上面的 OATHAuth（两步验证）不是一个东西。三站共用这份文件，默认不加载；
+# 各站在 etc/config.php 里设 $mcOAuthEnabled = true 才加载，打开之前先建好 OAuth 的表、配好密钥。
+$mcOAuthEnabled ??= false;
+if ( $mcOAuthEnabled ) {
+	wfLoadExtension( 'OAuth' );
+	# 非 owner-only 应用的注册表单只给授权码和刷新令牌两种，去掉 client_credentials（应用不经用户、直接以注册人身份拿令牌）；
+	# owner-only 应用不受这里影响，固定用 client_credentials。
+	# 不能直接赋值：extension.json 里的数组默认值会和这里的值 array_merge，client_credentials 还在。等扩展注册完再覆盖。
+	$wgExtensionFunctions[] = static function () {
+		global $wgOAuth2EnabledGrantTypes;
+		$wgOAuth2EnabledGrantTypes = [ 'authorization_code', 'refresh_token' ];
+	};
+	# 应用只由管理员注册、审批，不自动批准（$wgOAuthAutoApprove 保持默认的空数组）。
+	$wgGroupPermissions['sysop']['mwoauthproposeconsumer'] = true;
+	$wgGroupPermissions['sysop']['mwoauthupdateownconsumer'] = true;
+	$wgGroupPermissions['sysop']['mwoauthmanageconsumer'] = true;
+}
 
 wfLoadExtension('PageImages');
 wfLoadExtension('ParserFunctions');
