@@ -32,9 +32,9 @@ mw 镜像里的 `vendor/` 和 composer 装的四个扩展严格按 `composer.loc
 不一致就构建失败。以前干净安装时 merge-plugin 会对各扩展引入的依赖再跑一次 update，镜像里这些包的版本并不由锁文件决定，
 原因和现在的做法见 `mw.Dockerfile` 里的注释。
 
-升级依赖就是改锁文件：先 `composer install` 让 merge-plugin 进 `vendor/`，再 `composer update <包名>`，
-提交 `composer.lock`。`vendor/` 为空时直接 `update`，插件没加载、各扩展的 `composer.json` 合并不进来，
-它们引入的依赖会从锁文件里被删掉。
+升级依赖就是改锁文件：先照镜像的装法 `composer install --no-autoloader && composer dump-autoload` 让 merge-plugin 进 `vendor/`，
+再 `composer update <包名>`，提交 `composer.lock`。`vendor/` 为空时不要直接 `composer install`：会触发上面那次 update，
+把锁文件也改掉；也不要直接 `update`：插件没加载、各扩展的 `composer.json` 合并不进来，它们引入的依赖会从锁文件里被删掉。
 
 ## PHP/FPM 配置和线上的关系
 
