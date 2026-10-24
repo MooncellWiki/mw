@@ -75,7 +75,10 @@ $wgFileBackends['s3']['endpoint'] = 'https://oss-accelerate.aliyuncs.com';
 
 $wgEnableUploads = true;
 $wgDebugTimestamps = false;
-$wgDBerrorLog = true;
+// DB errors go to stderr: the php-fpm container log for web requests, the terminal for
+// maintenance scripts. This is a destination, not a switch: `true` is used as the file
+// name "1" relative to the working directory.
+$wgDBerrorLog = 'php://stderr';
 
 if ( getenv( 'PRTS_DEBUG' ) === '1' ) {
 	$wgShowExceptionDetails = true;
