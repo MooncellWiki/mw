@@ -26,6 +26,16 @@ install-php-extensions 按 checksum。升级时改对应的值（取值方法见
 只想拿 Debian 安全更新时，把基础镜像的 digest 换成同一标签的最新 digest 即可。
 改了 `docker/php/` 下任何文件，tree 哈希就会变，下一次发版自动重新构建。
 
+## Composer 依赖
+
+mw 镜像里的 `vendor/` 和 composer 装的四个扩展严格按 `composer.lock` 装，`mw.Dockerfile` 的依赖阶段最后逐个包核对，
+不一致就构建失败。以前干净安装时 merge-plugin 会对各扩展引入的依赖再跑一次 update，镜像里这些包的版本并不由锁文件决定，
+原因和现在的做法见 `mw.Dockerfile` 里的注释。
+
+升级依赖就是改锁文件：先 `composer install` 让 merge-plugin 进 `vendor/`，再 `composer update <包名>`，
+提交 `composer.lock`。`vendor/` 为空时直接 `update`，插件没加载、各扩展的 `composer.json` 合并不进来，
+它们引入的依赖会从锁文件里被删掉。
+
 ## PHP/FPM 配置和线上的关系
 
 配置分两层，同名设置以后加载的为准：

@@ -15,7 +15,29 @@ WORKDIR /srv
 COPY composer.json composer.lock composer.local.json ./
 COPY includes/composer ./includes/composer
 COPY extensions ./extensions
-RUN composer install --no-dev --no-interaction --no-progress --optimize-autoloader
+# 依赖严格按 composer.lock 装。vendor 为空时 merge-plugin 是这次 install 中途才装上的：
+# 它在随后的 pre-autoload-dump 里合并 extensions/*/composer.json，记下合并进来的依赖，
+# install 结束时因为“首次安装”对这些依赖再跑一次 composer update（MergePlugin::onPostInstallOrUpdate），
+# SMW、sentry 等会升到约束允许的最新版、不按锁文件，工作目录里的锁文件也被改写。
+# 所以先 --no-autoloader 装：没有 autoload dump，插件不合并、记不下依赖，也就不跑那次 update；
+# 再单独 dump-autoload，这时插件已在 vendor 里，照常合并各扩展的 autoload。
+# 最后拿装之前存下的锁文件逐个包核对 vendor 的版本，不一致就让构建失败。
+RUN cp composer.lock /tmp/composer.lock \
+ && composer install --no-dev --no-interaction --no-progress --no-autoloader \
+ && composer dump-autoload --no-dev --no-interaction --optimize \
+ && php -r ' \
+      $versions = fn ( $packages ) => array_column( $packages, "version", "name" ); \
+      $locked = $versions( json_decode( file_get_contents( "/tmp/composer.lock" ), true )["packages"] ); \
+      $installed = $versions( json_decode( file_get_contents( "vendor/composer/installed.json" ), true )["packages"] ); \
+      ksort( $locked ); ksort( $installed ); \
+      if ( $locked !== $installed ) { \
+        foreach ( array_unique( array_merge( array_keys( $locked ), array_keys( $installed ) ) ) as $name ) { \
+          if ( ( $locked[$name] ?? null ) !== ( $installed[$name] ?? null ) ) { \
+            fprintf( STDERR, "%s: composer.lock %s, vendor %s\n", $name, $locked[$name] ?? "-", $installed[$name] ?? "-" ); \
+          } \
+        } \
+        exit( 1 ); \
+      }'
 
 # ---------------------------------------------------------------------------
 # 运行阶段：按变更频率从冷到热分层，LocalSettings.php 落在最后一层。
