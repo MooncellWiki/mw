@@ -12,6 +12,11 @@ ARG PHP_IMAGE=ghcr.io/mooncellwiki/php:latest
 # ---------------------------------------------------------------------------
 FROM ${PHP_IMAGE} AS deps
 WORKDIR /srv
+# OAuth 扩展引入的 league/oauth2-server 是 wikimedia 的 git 仓库按提交固定的，锁文件里只有 git 源、没有 zip 包，
+# composer 要用 git 拉。PHP 镜像里没有 git，只在这个阶段装，运行镜像里不带。
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git \
+ && rm -rf /var/lib/apt/lists/*
 COPY composer.json composer.lock composer.local.json ./
 COPY includes/composer ./includes/composer
 COPY extensions ./extensions
