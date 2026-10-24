@@ -54,7 +54,7 @@ jobs:
             type=sha
           labels: |
             org.opencontainers.image.title=php
-            org.opencontainers.image.description=MooncellWiki 的 PHP-FPM 基础镜像（docker/php）
+            org.opencontainers.image.description=MooncellWiki 的 PHP-FPM + Caddy 基础镜像（docker/php）
             org.opencontainers.image.version=${{ steps.php_lookup.outputs.php_version }}
 
       - name: Build and push PHP image
@@ -100,29 +100,7 @@ jobs:
           cache-to: type=registry,ref=ghcr.io/mooncellwiki/mw:buildcache,mode=max
           build-args: PHP_IMAGE=ghcr.io/mooncellwiki/php@${{ steps.php.outputs.digest }}
 
-      - name: Extract Caddy Docker Metadata
-        id: caddy_meta
-        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
-        with:
-          images: |
-            ghcr.io/mooncellwiki/caddy
-          tags: |
-            type=semver,pattern={{raw}}
-            type=sha
-
-      - name: Build and push Caddy image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          file: .github/workflows/caddy.Dockerfile
-          push: true
-          tags: ${{ steps.caddy_meta.outputs.tags }}
-          labels: ${{ steps.caddy_meta.outputs.labels }}
-          cache-from: type=registry,ref=ghcr.io/mooncellwiki/caddy:buildcache
-          cache-to: type=registry,ref=ghcr.io/mooncellwiki/caddy:buildcache,mode=max
-          build-args: MW_IMAGE=ghcr.io/mooncellwiki/mw@${{ steps.mw_build.outputs.digest }}
-
-      # latest 等三个镜像都推送成功后才动，并且只跟仓库里最新的发布标签走：
+      # latest 等两个镜像都推送成功后才动，并且只跟仓库里最新的发布标签走：
       # 重跑旧标签的 workflow、在旧提交上补打标签、两个标签前后脚推送，都不会让 latest 退回旧版本。
       - name: Point php:latest at this release
         env:
