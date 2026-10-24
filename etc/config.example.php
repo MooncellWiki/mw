@@ -23,6 +23,18 @@ $wgDBprefix = 'ak';
 $wgMainCacheType = CACHE_NONE;
 $wgSessionCacheType = CACHE_DB;
 
+// Optional OAuth provider (Extension:OAuth), off by default. Before turning it on, generate
+// local-only keys and run maintenance/run.php update to create the OAuth tables:
+//   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out etc/oauth/private.pem
+//   openssl pkey -in etc/oauth/private.pem -pubout -out etc/oauth/public.pem
+// Production keys live in docker-config's secret.php, never in this repository.
+$mcOAuthEnabled = false;
+// $wgOAuth2PrivateKey = file_get_contents( __DIR__ . '/oauth/private.pem' );
+// $wgOAuth2PublicKey = file_get_contents( __DIR__ . '/oauth/public.pem' );
+// $wgOAuthSecretKey = 'local-only-oauth-secret-key';
+// Local development is plain HTTP; production is HTTPS and keeps the default (true).
+// $wgMWOAuthSecureTokenTransfer = false;
+
 // These values are development-only and must never be reused in production.
 $wgSecretKey = getenv( 'PRTS_SECRET_KEY' )
 	?: 'local-only-secret-key-change-before-exposing-this-installation';
