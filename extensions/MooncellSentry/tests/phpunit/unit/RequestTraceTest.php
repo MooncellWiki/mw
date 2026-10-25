@@ -2,7 +2,6 @@
 
 namespace MediaWiki\Extension\MooncellSentry\Tests;
 
-use MediaWiki\Extension\MooncellSentry\Hooks;
 use MediaWiki\Extension\MooncellSentry\RequestTrace;
 use MediaWiki\Request\WebRequest;
 use MediaWikiUnitTestCase;
@@ -103,11 +102,14 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 		}
 	}
 
-	/** @covers \MediaWiki\Extension\MooncellSentry\Hooks */
-	public function testWebLifecycle(): void {
+	/**
+	 * @covers \MediaWiki\Extension\MooncellSentry\Hooks
+	 * @dataProvider provideModes
+	 */
+	public function testWebLifecycle( string $mode ): void {
 		// phpcs:ignore MediaWiki.Usage.ForbiddenFunctions.proc_open
 		$process = proc_open(
-			[ PHP_BINARY, dirname( __DIR__ ) . '/fixtures/web-request.php' ],
+			[ PHP_BINARY, dirname( __DIR__ ) . '/fixtures/web-request.php', $mode ],
 			[ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ],
 			$pipes
 		);
@@ -116,7 +118,24 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 		fclose( $pipes[1] );
 		fclose( $pipes[2] );
 		$this->assertSame( 0, proc_close( $process ), $error );
-		$events = json_decode( $output, true, 512, JSON_THROW_ON_ERROR );
+		$result = json_decode( $output, true, 512, JSON_THROW_ON_ERROR );
+		$this->assertTrue( $result['suppressed_ignored'] );
+		$this->assertSame( $mode !== 'disabled', $result['client_initialized'] );
+		$this->assertSame( $mode !== 'disabled' && $mode !== 'cli', $result['trace_started'] );
+		$events = $result['events'];
+		if ( $mode === 'disabled' ) {
+			$this->assertSame( [], $events );
+			return;
+		}
+		$this->assertSame( 1.0, $result['error_rate'] * 1.0 );
+		if ( $mode !== 'legacy' ) {
+			$this->assertSame( 0.1, $result['profile_rate'] );
+			$this->assertTrue( $result['logs_enabled'] );
+		}
+		if ( $mode === 'cli' ) {
+			$this->assertSame( [ 'error', 'error', 'error' ], array_column( $events, 'type' ) );
+			return;
+		}
 		$this->assertSame( [ 'error', 'error', 'error', 'transaction' ], array_column( $events, 'type' ) );
 		$this->assertCount( 1, array_unique( array_column( $events, 'trace' ) ) );
 		$this->assertNotEmpty( $events[0]['trace'] );
@@ -124,24 +143,13 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 		$this->assertNotEmpty( $events[0]['request_id'] );
 		$this->assertSame( 'index', $events[3]['name'] );
 		$this->assertSame( 'internal_error', $events[3]['status'] );
-		$this->assertTrue( $events[3]['suppressed_ignored'] );
 	}
 
 	public static function provideSampling(): array {
 		return [ [ 1.0 ], [ 0.0 ] ];
 	}
 
-	/** @covers \MediaWiki\Extension\MooncellSentry\Hooks */
-	public function testCliDoesNotStartTransaction() {
-		$previousHub = SentrySdk::getCurrentHub();
-		SentrySdk::setCurrentHub( new Hub() );
-		try {
-			\Sentry\init( [ 'traces_sample_rate' => 1.0, 'default_integrations' => false ] );
-			$hub = SentrySdk::getCurrentHub();
-			Hooks::onSetup();
-			$this->assertNull( $hub->getSpan() );
-		} finally {
-			SentrySdk::setCurrentHub( $previousHub );
-		}
+	public static function provideModes(): array {
+		return [ [ 'managed' ], [ 'legacy' ], [ 'disabled' ], [ 'cli' ] ];
 	}
 }

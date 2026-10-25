@@ -9,7 +9,7 @@ if ( PHP_SAPI !== 'cli' ) {
 	exit;
 }
 
-define( 'MW_ENTRY_POINT', 'index' );
+define( 'MW_ENTRY_POINT', ( $argv[1] ?? '' ) === 'cli' ? 'cli' : 'index' );
 define( 'MW_NO_SESSION', true );
 define( 'MW_CONFIG_CALLBACK', 'wfMooncellSentryTestSettings' );
 $_SERVER['REQUEST_METHOD'] = 'GET';
@@ -30,10 +30,11 @@ function wfMooncellSentryTestSettings( $settings ) {
 		'DebugLogGroups' => [ 'exception' => '/dev/null' ],
 	] ] );
 	wfLoadExtension( 'MooncellSentry' );
-	\Sentry\init( [
-		'dsn' => 'https://public@example.invalid/1',
+	$options = [
 		'traces_sample_rate' => 1.0,
-		'default_integrations' => false,
+		'before_send_log' => static function () {
+			return null;
+		},
 		'before_send' => static function ( $event ) {
 			$GLOBALS['sentryTestEvents'][] = [
 				'type' => 'error',
@@ -48,13 +49,23 @@ function wfMooncellSentryTestSettings( $settings ) {
 				'trace' => $event->getTraceId(),
 				'name' => $event->getTransaction(),
 				'status' => (string)$event->getContexts()['trace']['status'],
-				'suppressed_ignored' => $GLOBALS['sentrySuppressedIgnored'],
 				'request_id' => $event->getTags()['mw_request_id'] ?? null,
 			];
 			return null;
 		},
-	] );
-	// Match docker-config's fgo/prts/mooncell post-config.php exception hook.
+	];
+	$mode = $GLOBALS['argv'][1] ?? 'managed';
+	if ( $mode === 'disabled' ) {
+		return;
+	}
+	if ( $mode !== 'legacy' ) {
+		$GLOBALS['wgMooncellSentryDsn'] = 'https://public@example.invalid/1';
+		$GLOBALS['wgMooncellSentryOptions'] = $options;
+		return;
+	}
+
+	// Old docker-config is supported until the site overlay switches to extension settings.
+	\Sentry\init( $options + [ 'dsn' => 'https://public@example.invalid/1' ] );
 	$GLOBALS['wgHooks']['LogException'][] = static function ( $e, $suppressed ) {
 		if ( $suppressed ) {
 			return;
@@ -68,21 +79,41 @@ function wfMooncellSentryTestSettings( $settings ) {
 
 // Model a reporter registered before our finalizer, such as MediaWiki's fatal handler.
 register_shutdown_function( static function () {
-	if ( SentrySdk::getCurrentHub()->getTransaction() ) {
+	if ( SentrySdk::getCurrentHub()->getClient() ) {
 		MWExceptionHandler::logException( new RuntimeException( 'shutdown error' ) );
 	}
 } );
 require dirname( __DIR__, 5 ) . '/includes/WebStart.php';
+// Keep native warning text out of the fixture JSON; MW still receives the warning.
+ini_set( 'display_errors', '0' );
+ini_set( 'log_errors', '0' );
 MediaWikiServices::getInstance()->getHookContainer()->run(
 	'LogException', [ new RuntimeException( 'suppressed error' ), true ]
 );
+@trigger_error( 'suppressed PHP warning', E_USER_WARNING );
+$transaction = SentrySdk::getCurrentHub()->getTransaction();
 $GLOBALS['sentrySuppressedIgnored'] = !$GLOBALS['sentryTestEvents'] &&
-	SentrySdk::getCurrentHub()->getTransaction()->getStatus() === null;
-MWExceptionHandler::logException( new RuntimeException( 'execute error' ) );
+	( $transaction === null || $transaction->getStatus() === null );
+$GLOBALS['sentryTraceStarted'] = $transaction !== null;
+if ( ( $argv[1] ?? '' ) === 'legacy' ) {
+	MWExceptionHandler::logException( new RuntimeException( 'execute error' ) );
+} else {
+	trigger_error( 'execute PHP warning', E_USER_WARNING );
+}
 DeferredUpdates::addCallableUpdate( static function () {
 	MWExceptionHandler::logException( new RuntimeException( 'deferred error' ) );
 } );
 DeferredUpdates::doUpdates();
 register_shutdown_function( static function () {
-	echo json_encode( $GLOBALS['sentryTestEvents'], JSON_PRETTY_PRINT ), "\n";
+	$client = SentrySdk::getCurrentHub()->getClient();
+	$options = $client ? $client->getOptions() : null;
+	echo json_encode( [
+		'events' => $GLOBALS['sentryTestEvents'],
+		'suppressed_ignored' => $GLOBALS['sentrySuppressedIgnored'],
+		'trace_started' => $GLOBALS['sentryTraceStarted'],
+		'client_initialized' => $client !== null,
+		'error_rate' => $options ? $options->getSampleRate() : null,
+		'profile_rate' => $options ? $options->getProfilesSampleRate() : null,
+		'logs_enabled' => $options ? $options->getEnableLogs() : null,
+	], JSON_PRETTY_PRINT ), "\n";
 } );

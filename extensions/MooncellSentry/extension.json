@@ -19,5 +19,15 @@
 	"manifest_version": 2,
 	"ExtensionFunctions": [
 		"MediaWiki\\Extension\\MooncellSentry\\Hooks::onSetup"
-	]
+	],
+	"config": {
+		"MooncellSentryDsn": {
+			"value": "",
+			"description": "Site DSN. Empty keeps SDK initialization/exception capture disabled (legacy externally initialized clients can still be traced)."
+		},
+		"MooncellSentryOptions": {
+			"value": {},
+			"description": "PHP SDK option overrides. Defaults: errors 100%, traces 1%, profiles 10% of sampled traces, SDK logs enabled."
+		}
+	}
 }
