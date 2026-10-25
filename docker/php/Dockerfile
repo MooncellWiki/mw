@@ -48,7 +48,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 线上 pod 里的 caddy 容器也用这个镜像（docker-config 的 web.yaml），不再单独构建 caddy 镜像。
 # 和 PHP 一样按 digest 固定，升级时改这里：
 #   docker buildx imagetools inspect caddy:2.11.7 --format '{{.Manifest.Digest}}'
+# 镜像的 STOPSIGNAL 仍是 php:fpm 的 SIGQUIT，caddy 收到它会立即退出；web.yaml 里把它换成了 SIGTERM。
 COPY --from=caddy:2.11.7@sha256:685ae3d7c34d9b5f8caeddc5d14051db7bbd88ff1f5a2fa0c16bd8ca328fb7af /usr/bin/caddy /usr/local/bin/caddy
+# 换 caddy 或基础镜像后二进制跑不起来的话，构建在这里就失败。
+RUN caddy version
 
 # 三站通用的设置。线上 docker-config 把各站自己的 php.ini、php-fpm.conf 挂到 conf.d/php.ini、php-fpm.d/zzz-docker.conf，
 # 按文件名排在这两个文件后面加载，同名设置以各站为准。
