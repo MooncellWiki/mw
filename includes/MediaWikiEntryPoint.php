@@ -194,24 +194,87 @@ abstract class MediaWikiEntryPoint {
 	 * prepareForOutput(), and postOutputShutdown().
 	 */
 	final public function run() {
-		$transactionContext = \Sentry\Tracing\TransactionContext::make()->setName('run');
-		$transaction = \Sentry\startTransaction($transactionContext);
-
-		$this->setup();
-
+		$hub = \Sentry\SentrySdk::getCurrentHub();
+		$hub->pushScope();
+		$transaction = null;
 		try {
-			$this->execute();
+			$request = $this->context->getRequest();
+			$transactionContext = \Sentry\Tracing\TransactionContext::make()
+				->setName( MW_ENTRY_POINT )
+				->setOp( 'http.server' );
+			$transaction = $hub->startTransaction( $transactionContext );
+			// Errors and logs must use this transaction's trace, including when unsampled.
+			$hub->setSpan( $transaction );
+			$hub->configureScope( static function ( \Sentry\State\Scope $scope ) {
+				$scope->setTag( 'mw_request_id', WebRequest::getRequestId() );
+			} );
+			$transaction->setData( [
+				'http.request.method' => $request->getMethod(),
+				'mw.action' => $request->getText( 'action', 'view' ),
+			] );
 
-			// Prepare for flushing the output. Will do nothing if it was already called by execute().
-			$this->prepareForOutput();
+			$this->runSentryStage( 'mw.setup', function () {
+				$this->setup();
+			} );
+
+			try {
+				$this->runSentryStage( 'mw.execute', function () {
+					$this->execute();
+				} );
+
+				// Prepare for flushing the output. Will do nothing if already called by execute().
+				$this->runSentryStage( 'mw.prepare_output', function () {
+					$this->prepareForOutput();
+				} );
+			} catch ( Throwable $e ) {
+				$transaction->setStatus( \Sentry\Tracing\SpanStatus::internalError() );
+				$this->status( 500 );
+				$this->handleTopLevelError( $e );
+			}
+
+			$this->runSentryStage( 'mw.post_output', function () {
+				$this->postOutputShutdown();
+			} );
 		} catch ( Throwable $e ) {
-			$this->status( 500 );
-			$this->handleTopLevelError( $e );
+			if ( $transaction !== null ) {
+				$transaction->setStatus( \Sentry\Tracing\SpanStatus::internalError() );
+			}
+			throw $e;
+		} finally {
+			try {
+				// Also stops and attaches any SDK-sampled profile to this transaction.
+				if ( $transaction !== null ) {
+					$transaction->finish();
+				}
+			} finally {
+				$hub->popScope();
+			}
 		}
+	}
 
-		$this->postOutputShutdown();
-
-		$transaction->finish();
+	/** Run one request phase with an active child span for exception/log correlation. */
+	private function runSentryStage( string $operation, callable $callback ): void {
+		$hub = \Sentry\SentrySdk::getCurrentHub();
+		$parent = $hub->getSpan();
+		if ( $parent === null ) {
+			$callback();
+			return;
+		}
+		$span = $parent->startChild( \Sentry\Tracing\SpanContext::make()->setOp( $operation ) );
+		$hub->setSpan( $span );
+		try {
+			$callback();
+		} catch ( Throwable $e ) {
+			$span->setStatus( \Sentry\Tracing\SpanStatus::internalError() );
+			$parent->setStatus( \Sentry\Tracing\SpanStatus::internalError() );
+			throw $e;
+		} finally {
+			try {
+				$span->finish();
+			} finally {
+				$hub->setSpan( $parent );
+			}
+		}
 	}
 
 	/**
@@ -500,6 +563,14 @@ abstract class MediaWikiEntryPoint {
 		try {
 			$this->restInPeace();
 		} catch ( Throwable $e ) {
+			// This exception is handled here, so the outer request span cannot see it.
+			$hub = \Sentry\SentrySdk::getCurrentHub();
+			if ( $hub->getSpan() !== null ) {
+				$hub->getSpan()->setStatus( \Sentry\Tracing\SpanStatus::internalError() );
+			}
+			if ( $hub->getTransaction() !== null ) {
+				$hub->getTransaction()->setStatus( \Sentry\Tracing\SpanStatus::internalError() );
+			}
 			MWExceptionHandler::rollbackPrimaryChangesAndLog(
 				$e,
 				MWExceptionHandler::CAUGHT_BY_ENTRYPOINT
