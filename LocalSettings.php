@@ -382,6 +382,9 @@ $wgGroupPermissions['sysop']['abusefilter-revert'] = true;
 # CodeMirror
 wfLoadExtension('CodeMirror');
 $wgDefaultUserOptions['usecodemirror'] = 1;
+# Use CodeMirror 6: the legacy CodeMirror 5 editor drops IME input typed right after a tab.
+# Remove when upgrading to MW 1.46, where CodeMirror 6 is the only editor and this flag is gone.
+$wgCodeMirrorV6 = true;
 # Enable bracket matching in CodeMirror
 $wgCodeMirrorEnableBracketMatching = true;
 # Enable accessible colors in CodeMirror
