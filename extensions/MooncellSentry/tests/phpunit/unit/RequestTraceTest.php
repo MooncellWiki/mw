@@ -124,6 +124,7 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 		$this->assertNotEmpty( $events[0]['request_id'] );
 		$this->assertSame( 'index', $events[3]['name'] );
 		$this->assertSame( 'internal_error', $events[3]['status'] );
+		$this->assertTrue( $events[3]['suppressed_ignored'] );
 	}
 
 	public static function provideSampling(): array {

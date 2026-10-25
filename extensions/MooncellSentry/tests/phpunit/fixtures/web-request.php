@@ -1,5 +1,7 @@
 <?php
 use MediaWiki\Deferred\DeferredUpdates;
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Request\WebRequest;
 use Sentry\SentrySdk;
 
 // Run only as an isolated CLI fixture, never as a public web endpoint.
@@ -46,13 +48,21 @@ function wfMooncellSentryTestSettings( $settings ) {
 				'trace' => $event->getTraceId(),
 				'name' => $event->getTransaction(),
 				'status' => (string)$event->getContexts()['trace']['status'],
+				'suppressed_ignored' => $GLOBALS['sentrySuppressedIgnored'],
 				'request_id' => $event->getTags()['mw_request_id'] ?? null,
 			];
 			return null;
 		},
 	] );
+	// Match docker-config's fgo/prts/mooncell post-config.php exception hook.
 	$GLOBALS['wgHooks']['LogException'][] = static function ( $e, $suppressed ) {
-		\Sentry\captureException( $e );
+		if ( $suppressed ) {
+			return;
+		}
+		\Sentry\withScope( static function ( \Sentry\State\Scope $scope ) use ( $e ) {
+			$scope->setTag( 'mw_request_id', WebRequest::getRequestId() );
+			\Sentry\captureException( $e );
+		} );
 	};
 }
 
@@ -63,7 +73,12 @@ register_shutdown_function( static function () {
 	}
 } );
 require dirname( __DIR__, 5 ) . '/includes/WebStart.php';
-\Sentry\captureException( new RuntimeException( 'execute error' ) );
+MediaWikiServices::getInstance()->getHookContainer()->run(
+	'LogException', [ new RuntimeException( 'suppressed error' ), true ]
+);
+$GLOBALS['sentrySuppressedIgnored'] = !$GLOBALS['sentryTestEvents'] &&
+	SentrySdk::getCurrentHub()->getTransaction()->getStatus() === null;
+MWExceptionHandler::logException( new RuntimeException( 'execute error' ) );
 DeferredUpdates::addCallableUpdate( static function () {
 	MWExceptionHandler::logException( new RuntimeException( 'deferred error' ) );
 } );

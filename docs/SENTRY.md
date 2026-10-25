@@ -3,10 +3,18 @@
 ## Integration boundary
 
 `MooncellSentry` owns tracing in a local extension. `LocalSettings.php` loads it;
-Sentry credentials, sampling and the existing `LogException` capture/filter remain
-in the deployment's untracked `etc/post-config.php`. The extension does not call
-`Sentry\init()` or capture exceptions a second time. A missing SDK client (as in
-local development) or a CLI entry point leaves tracing inactive.
+Sentry DSNs, sampling and the existing `LogException` capture/filter remain in
+`mooncell-docker-config/k8s/overlays/{prts,fgo,mooncell}/post-config.php`. Kustomize
+includes each file in `wiki-config`, mounted at `/srv/etc/post-config.php`;
+`LocalSettings.php` loads it before extension initialization runs. Local `etc/`
+files are untracked in this MW repository, but deployment configuration is tracked
+in docker-config. The extension does not call `Sentry\init()` or capture exceptions
+a second time. A missing SDK client (as in local development) or a CLI entry point
+leaves tracing inactive.
+
+All three site hooks skip `$suppressed` errors and capture inside `Sentry\withScope()`.
+That temporary scope inherits the extension's active transaction/span, so existing
+request tags and trace IDs survive scoped exception capture without config changes.
 
 The extension declares `ExtensionFunctions` in its manifest, which MediaWiki
 invokes after site configuration has loaded and RequestContext is initialized. This starts and binds the request transaction on a dedicated Sentry scope.
@@ -92,4 +100,6 @@ SDK callbacks discard all test events, logs and transactions without network I/O
 Tests cover sampled/unsampled correlation, scope restoration, repeated finalization,
 error status, CLI exclusion and real Excimer profile IDs when the extension exists.
 An isolated subprocess also loads real MediaWiki setup and DeferredUpdates, then
-asserts that execute/deferred/shutdown errors precede the matching transaction.
+asserts that execute/deferred/shutdown errors precede the matching transaction,
+using the same `withScope()` capture and suppressed-error filtering as all three
+site overlays. Suppressed errors neither emit an event nor mark the request failed.
