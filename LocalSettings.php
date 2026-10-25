@@ -643,4 +643,7 @@ $wgCrawlerProtectedActions = [
 ];
 $wgCrawlerProtectionRawDenial = true;
 
+// Sentry credentials and sampling stay in etc/post-config.php.
+wfLoadExtension( 'MooncellSentry' );
+
 require_once __DIR__ . '/etc/post-config.php';

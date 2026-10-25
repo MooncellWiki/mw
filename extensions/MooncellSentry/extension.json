@@ -1,0 +1,23 @@
+{
+	"name": "MooncellSentry",
+	"version": "1.0.0",
+	"author": [
+		"Mooncell"
+	],
+	"description": "Correlate MediaWiki requests, errors, logs and profiles in Sentry.",
+	"license-name": "GPL-2.0-or-later",
+	"type": "other",
+	"requires": {
+		"MediaWiki": ">= 1.43.0"
+	},
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\MooncellSentry\\": "src/"
+	},
+	"Hooks": {
+		"LogException": "MediaWiki\\Extension\\MooncellSentry\\Hooks::onLogException"
+	},
+	"manifest_version": 2,
+	"ExtensionFunctions": [
+		"MediaWiki\\Extension\\MooncellSentry\\Hooks::onSetup"
+	]
+}
