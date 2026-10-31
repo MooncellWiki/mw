@@ -1,0 +1,33 @@
+{
+	"name": "MooncellSentry",
+	"version": "1.0.0",
+	"author": [
+		"Mooncell"
+	],
+	"description": "Correlate MediaWiki requests, errors, logs and profiles in Sentry.",
+	"license-name": "GPL-2.0-or-later",
+	"type": "other",
+	"requires": {
+		"MediaWiki": ">= 1.43.0"
+	},
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\MooncellSentry\\": "src/"
+	},
+	"Hooks": {
+		"LogException": "MediaWiki\\Extension\\MooncellSentry\\Hooks::onLogException"
+	},
+	"manifest_version": 2,
+	"ExtensionFunctions": [
+		"MediaWiki\\Extension\\MooncellSentry\\Hooks::onSetup"
+	],
+	"config": {
+		"MooncellSentryDsn": {
+			"value": "",
+			"description": "Site DSN. Empty keeps SDK initialization/exception capture disabled (legacy externally initialized clients can still be traced)."
+		},
+		"MooncellSentryOptions": {
+			"value": {},
+			"description": "PHP SDK option overrides. Defaults: errors 100%, traces 1%, profiles 10% of sampled traces, SDK logs enabled."
+		}
+	}
+}
