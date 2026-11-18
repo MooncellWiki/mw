@@ -17,6 +17,7 @@
 		"LogException": "MediaWiki\\Extension\\MooncellSentry\\Hooks::onLogException"
 	},
 	"manifest_version": 2,
+	"callback": "MediaWiki\\Extension\\MooncellSentry\\Hooks::onRegistration",
 	"ExtensionFunctions": [
 		"MediaWiki\\Extension\\MooncellSentry\\Hooks::onSetup"
 	],

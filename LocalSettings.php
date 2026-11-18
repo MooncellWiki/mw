@@ -643,7 +643,5 @@ $wgCrawlerProtectedActions = [
 ];
 $wgCrawlerProtectionRawDenial = true;
 
-// Site Sentry DSN/options are set in etc/post-config.php.
-wfLoadExtension( 'MooncellSentry' );
-
 require_once __DIR__ . '/etc/post-config.php';
+require_once __DIR__ . '/extensions/MooncellSentry/bootstrap.php';

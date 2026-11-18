@@ -12,9 +12,11 @@ $wgMooncellSentryDsn = 'http://<project-public-key>@sentry-relay:3000/<project-i
 ```
 
 Kustomize puts that file in `wiki-config`, mounted at `/srv/etc/post-config.php`.
-The extension starts through manifest `ExtensionFunctions`, after these settings
-are loaded and RequestContext is initialized. An empty DSN leaves initialization
-and capture disabled, so local development needs no reporting configuration.
+`LocalSettings.php` immediately includes `extensions/MooncellSentry/bootstrap.php`
+after that site configuration. This starts error reporting before MediaWiki
+validates the extension queue. Installations using plain `wfLoadExtension` start
+reporting from the manifest registration callback. Both paths use the same SDK
+client. An empty DSN preserves a client supplied by the legacy site configuration.
 
 Default PHP SDK options preserve the existing production policy:
 
@@ -30,35 +32,38 @@ Sites can override SDK options with `$wgMooncellSentryOptions`, for example:
 $wgMooncellSentryOptions = [ 'traces_sample_rate' => 0.05 ];
 ```
 
-The dedicated DSN setting takes precedence over an options `dsn`. The extension
-removes SDK global PHP/exception/fatal listeners while retaining other default
-integrations and site-provided integrations. MediaWiki already owns those error
-handlers, so all exceptions flow through `LogException` once. Suppressed errors
-are skipped; accepted errors mark the request failed and are captured inside
-`withScope()` with `mw_request_id`. CLI errors are captured without starting a
-request transaction/profile.
+The dedicated DSN takes precedence over the SDK options. The SDK applies its own
+integration rules, including site replacements for default integrations such as
+`RequestIntegration`. Its PHP handlers cover early bootstrap. After MediaWiki
+installs its handlers, the extension captures unsuppressed `LogException` events.
+The SDK's fatal shutdown listener covers engine failures such as memory exhaustion.
 
 ## Request lifecycle
 
 ```text
-MediaWiki Setup.php
-  extension.json ExtensionFunctions
-    initialize SDK from site DSN/options
-    bind request transaction + mw_request_id (web requests)
-  normal request / output / DeferredUpdates
-    LogException → suppressed filter → one scoped capture
-    errors and SDK logs inherit the active trace
+LocalSettings.php → site post-config.php → MooncellSentry/bootstrap.php
+  initialize the SDK and tag the MediaWiki request ID
+MediaWiki setup
+  install MW handlers → LogException captures errors during setup
+  ExtensionFunctions → start and bind the web request transaction
+Request, output and DeferredUpdates
+  capture exceptions and collect SDK logs on the active trace
 PHP shutdown
-  earlier error reporters (e.g. MediaWiki's fatal handler)
-  finish transaction + existing SDK profile
+  SDK fatal listener → capture engine fatals
+  finish transaction/profile → flush SDK logs → restore scope → flush transport
 ```
 
-Tracing starts during late setup, stays active through post-send processing, and
-finishes idempotently at PHP shutdown, restoring the caller's scope. The SDK
-attaches a selected profile with the transaction event ID and trace ID. Work
-before initialization is not profiled. Later registered shutdown callbacks and
-hard PHP/FPM termination are not guaranteed to be covered. The core lifecycle is
-unchanged; `MediaWikiEntryPoint::run()` only loses the old Sentry calls.
+The transaction uses the final HTTP status. A recoverable warning on a successful
+response produces an error event and an `ok` transaction. An engine fatal marks
+the transaction `internal_error`, including after response headers have been sent.
+When a web job temporarily adopts its originating request ID, its error retains
+the HTTP transaction's `mw_request_id` and records the job's ID in
+`mw_job_request_id`. CLI workers use the current job's request ID and flush logs
+on shutdown. A failure during bootstrap also flushes logs collected up to that point.
+
+Profiling starts in late setup. A sampled profile carries the transaction event ID
+and trace ID. The request scope covers post-send updates and shutdown reporters
+registered before the finalizer. Hard FPM termination can interrupt delivery.
 
 ## Migration
 
@@ -83,8 +88,9 @@ The checked REL1_43-based source provides:
   client, not a Sentry/profile adapter. In this branch no request/SQL code calls
   `createRootSpan()` or `getTracer()` to build a request span tree; enabling that
   configuration alone will not supply one or correlate Sentry profiles.
-- The manifest's `ExtensionFunctions` callbacks, which provide
-  a stable place to initialize this integration after site settings.
+- The manifest registration callback runs before MediaWiki installs its error
+  handlers. `ExtensionFunctions` runs later and provides the request context for
+  the transaction.
 - `LogException`, intended for external exception aggregation integrations.
 - `BeforeInitialize` (index.php) / `ApiBeforeMain` (api.php), which cover only
   particular entry points. `AfterFinalPageOutput` fires before output buffers
@@ -104,9 +110,10 @@ References:
 
 ## Investigation
 
-Errors, SDK logs and transactions share a trace ID; error events and transactions
-also carry `mw_request_id`. An unsampled request still has a consistent trace ID,
-but no stored transaction/profile is promised. For focused investigations,
+Once the web transaction starts, errors and SDK logs share its trace ID. Error
+events and transactions also carry `mw_request_id`, which can be used to find
+errors captured earlier during bootstrap. Unsampled requests keep the trace ID
+on errors and logs. Stored transactions and profiles depend on sampling. For focused investigations,
 temporarily increase sampling for a chosen population using the options setting.
 
 Start from an issue event's trace link and inspect its transaction/profile, or
@@ -121,8 +128,10 @@ traces, or ingest ordinary MediaWiki logs.
 Run `vendor/bin/phpunit extensions/MooncellSentry/tests/phpunit/unit/RequestTraceTest.php`
 with the project PHP runtime. If local settings require an unavailable database,
 set `MW_CONFIG_FILE` to minimal test-only settings that load `MooncellSentry`.
-SDK callbacks discard test events/logs/transactions without network I/O.
-Tests cover sampled/unsampled correlation, restoration, repeated finalization and
-real Excimer profile IDs. Isolated processes load real MW setup/DeferredUpdates
-for extension-managed, legacy, disabled and CLI modes, exercising actual PHP
-warnings, suppressed filtering, deferred/shutdown errors and default options.
+The lifecycle tests run isolated PHP processes with a recording SDK transport.
+They exercise boot failures before extension registration and during
+`SetupAfterCache`, a native OOM, suppression, HTTP status, deferred updates,
+job request IDs, custom integrations and log delivery at shutdown. Web,
+unsampled, CLI, legacy and disabled configurations share the same fixture.
+The correlation tests also check caller scope restoration and real Excimer
+profile IDs when the profiler is installed.

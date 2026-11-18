@@ -60,7 +60,6 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 			// The transaction remains active after output; deferred errors use the same scope.
 			\Sentry\logger()->info( 'deferred log' );
 			\Sentry\captureException( new RuntimeException( 'deferred error' ) );
-			$trace->markError();
 
 			if ( $rate === 1.0 && extension_loaded( 'excimer' ) ) {
 				// Give the real sampling profiler enough CPU work to produce a profile.
@@ -69,7 +68,7 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 					hash( 'sha256', 'profile correlation' );
 				}
 			}
-			$trace->finish();
+			$trace->finish( 500 );
 			$trace->finish();
 			$this->assertSame( $previousSpan, $hub->getSpan(), 'Restore caller scope/span' );
 			$this->assertNotNull( $root->getEndTimestamp() );
@@ -104,52 +103,143 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 
 	/**
 	 * @covers \MediaWiki\Extension\MooncellSentry\Hooks
-	 * @dataProvider provideModes
+	 * @dataProvider provideRequests
 	 */
-	public function testWebLifecycle( string $mode ): void {
+	public function testRequestShutdown( string $mode, string $scenario ): void {
+		$records = $this->runFixture( $mode, $scenario );
+		$setup = $records['setup'][0];
+		$this->assertSame( $mode !== 'disabled', $setup['client'] );
+		$this->assertSame( !in_array( $mode, [ 'cli', 'disabled' ], true ), $setup['tracing'] );
+		if ( $mode === 'disabled' ) {
+			$this->assertSame( [ 'setup' ], array_keys( $records ) );
+			return;
+		}
+		$this->assertSame( 1.0, (float)$setup['error_rate'] );
+		$this->assertTrue( $setup['logs_enabled'] );
+		if ( $mode !== 'legacy' ) {
+			$this->assertSame( 0.1, $setup['profile_rate'] );
+		}
+		$this->assertSame( [ 'PHP Warning: recoverable warning', 'deferred error', 'shutdown error' ],
+			array_column( $records['event'], 'message' ) );
+		$this->assertSame( [ $setup['request_id'] ], array_values( array_unique(
+			array_column( $records['event'], 'request_id' ) ) ) );
+
+		$this->assertCount( 1, $records['transport_closed'] );
+		$this->assertCount( 1, $records['log'] );
+		$logs = $records['log'][0]['logs'];
+		$this->assertSame( [ 'deferred log', 'shutdown log' ], array_column( $logs, 'body' ) );
+		$trace = $records['event'][0]['trace'];
+		$this->assertNotEmpty( $trace );
+		$this->assertSame( [ $trace ], array_values( array_unique( array_column( $records['event'], 'trace' ) ) ) );
+		$this->assertSame( [ $trace ], array_values( array_unique( array_column( $logs, 'trace' ) ) ) );
+		if ( $mode === 'cli' || $scenario === 'unsampled' ) {
+			$this->assertArrayNotHasKey( 'transaction', $records );
+			return;
+		}
+		$this->assertCount( 1, $records['transaction'] );
+		$transaction = $records['transaction'][0];
+		$this->assertSame( 'ok', $transaction['status'] );
+		$this->assertSame( 'index', $transaction['name'] );
+		$this->assertSame( $setup['request_id'], $transaction['request_id'] );
+		$this->assertSame( $trace, $transaction['trace'] );
+	}
+
+	/**
+	 * @covers \MediaWiki\Extension\MooncellSentry\Hooks
+	 * @dataProvider provideBootFailures
+	 */
+	public function testBootFailure( string $mode, string $scenario, string $message ): void {
+		$records = $this->runFixture( $mode, $scenario, 255 );
+		$this->assertSame( [ $message ], array_column( $records['event'], 'message' ) );
+		$this->assertNotEmpty( $records['event'][0]['request_id'] );
+		$this->assertSame( 'startup log', $records['log'][0]['logs'][0]['body'] );
+		$this->assertCount( 1, $records['transport_closed'] );
+		$this->assertArrayNotHasKey( 'transaction', $records );
+	}
+
+	/** @covers \MediaWiki\Extension\MooncellSentry\Hooks */
+	public function testNativeFatal(): void {
+		$records = $this->runFixture( 'managed', 'oom', 255 );
+		$this->assertCount( 1, $records['event'] );
+		$error = $records['event'][0];
+		$this->assertStringContainsString( 'Allowed memory size', $error['message'] );
+		$transaction = $records['transaction'][0];
+		$this->assertSame( $transaction['trace'], $error['trace'] );
+		$this->assertSame( $records['setup'][0]['request_id'], $error['request_id'] );
+		$this->assertSame( 'internal_error', $transaction['status'] );
+	}
+
+	/**
+	 * @covers \MediaWiki\Extension\MooncellSentry\Hooks
+	 * @dataProvider provideJobModes
+	 */
+	public function testJobRequestId( string $mode ): void {
+		$records = $this->runFixture( $mode, 'job' );
+		[ $job, $other ] = $records['event'];
+		$transaction = $records['transaction'][0];
+		$this->assertSame( $records['setup'][0]['request_id'], $transaction['request_id'] );
+		$this->assertSame( $transaction['request_id'], $job['request_id'] );
+		$this->assertSame( $transaction['trace'], $job['trace'] );
+		$this->assertSame( 'job-origin', $job['job_id'] );
+		$this->assertNull( $other['job_id'] );
+		$this->assertNull( $transaction['job_id'] );
+	}
+
+	/** @covers \MediaWiki\Extension\MooncellSentry\Hooks */
+	public function testCustomIntegration(): void {
+		$records = $this->runFixture( 'managed', 'custom' );
+		$this->assertCount( 1, $records['custom_fetch'] );
+	}
+
+	/** @covers \MediaWiki\Extension\MooncellSentry\Hooks */
+	public function testHttpFailureStatus(): void {
+		$records = $this->runFixture( 'managed', 'http-error' );
+		$this->assertSame( 'unavailable', $records['transaction'][0]['status'] );
+	}
+
+	private function runFixture( string $mode, string $scenario, int $expectedExit = 0 ): array {
+		$diagnostics = tmpfile();
 		// phpcs:ignore MediaWiki.Usage.ForbiddenFunctions.proc_open
 		$process = proc_open(
-			[ PHP_BINARY, dirname( __DIR__ ) . '/fixtures/web-request.php', $mode ],
-			[ 1 => [ 'pipe', 'w' ], 2 => [ 'pipe', 'w' ] ],
-			$pipes
+			[ PHP_BINARY, dirname( __DIR__ ) . '/fixtures/web-request.php', $mode, $scenario ],
+			[ 1 => $diagnostics, 2 => $diagnostics, 3 => [ 'pipe', 'w' ] ], $pipes
 		);
-		$output = stream_get_contents( $pipes[1] );
-		$error = stream_get_contents( $pipes[2] );
-		fclose( $pipes[1] );
-		fclose( $pipes[2] );
-		$this->assertSame( 0, proc_close( $process ), $error );
-		$result = json_decode( $output, true, 512, JSON_THROW_ON_ERROR );
-		$this->assertTrue( $result['suppressed_ignored'] );
-		$this->assertSame( $mode !== 'disabled', $result['client_initialized'] );
-		$this->assertSame( $mode !== 'disabled' && $mode !== 'cli', $result['trace_started'] );
-		$events = $result['events'];
-		if ( $mode === 'disabled' ) {
-			$this->assertSame( [], $events );
-			return;
+		$lines = preg_split( '/\n/', stream_get_contents( $pipes[3] ), -1, PREG_SPLIT_NO_EMPTY );
+		fclose( $pipes[3] );
+		$exit = proc_close( $process );
+		rewind( $diagnostics );
+		$output = stream_get_contents( $diagnostics );
+		fclose( $diagnostics );
+		$this->assertSame( $expectedExit, $exit, $output );
+		$records = [];
+		foreach ( $lines as $line ) {
+			$record = json_decode( $line, true, 512, JSON_THROW_ON_ERROR );
+			$records[$record['type']][] = $record;
 		}
-		$this->assertSame( 1.0, $result['error_rate'] * 1.0 );
-		if ( $mode !== 'legacy' ) {
-			$this->assertSame( 0.1, $result['profile_rate'] );
-			$this->assertTrue( $result['logs_enabled'] );
-		}
-		if ( $mode === 'cli' ) {
-			$this->assertSame( [ 'error', 'error', 'error' ], array_column( $events, 'type' ) );
-			return;
-		}
-		$this->assertSame( [ 'error', 'error', 'error', 'transaction' ], array_column( $events, 'type' ) );
-		$this->assertCount( 1, array_unique( array_column( $events, 'trace' ) ) );
-		$this->assertNotEmpty( $events[0]['trace'] );
-		$this->assertCount( 1, array_unique( array_column( $events, 'request_id' ) ) );
-		$this->assertNotEmpty( $events[0]['request_id'] );
-		$this->assertSame( 'index', $events[3]['name'] );
-		$this->assertSame( 'internal_error', $events[3]['status'] );
+		return $records;
 	}
 
 	public static function provideSampling(): array {
 		return [ [ 1.0 ], [ 0.0 ] ];
 	}
 
-	public static function provideModes(): array {
-		return [ [ 'managed' ], [ 'legacy' ], [ 'disabled' ], [ 'cli' ] ];
+	public static function provideRequests(): array {
+		return [
+			[ 'managed', 'request' ], [ 'legacy', 'request' ], [ 'cli', 'request' ],
+			[ 'disabled', 'request' ], [ 'managed', 'unsampled' ],
+		];
+	}
+
+	public static function provideBootFailures(): array {
+		return [
+			[ 'managed', 'registration', 'failure before extension registration' ],
+			[ 'managed', 'startup', 'failure in SetupAfterCache' ],
+			[ 'legacy', 'startup', 'failure in SetupAfterCache' ],
+			[ 'managed', 'manifest', 'failure in SetupAfterCache' ],
+		];
+	}
+
+	public static function provideJobModes(): array {
+		return [ [ 'managed' ], [ 'legacy' ] ];
 	}
 }
