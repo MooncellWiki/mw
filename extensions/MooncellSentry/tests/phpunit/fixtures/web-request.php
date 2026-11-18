@@ -34,6 +34,11 @@ function wfMooncellSentryTestRecord( array $record ): void {
 	fwrite( $records, json_encode( $record, JSON_THROW_ON_ERROR ) . "\n" );
 }
 
+function wfMooncellSentryTestFailAfterRegistration(): void {
+	\Sentry\logger()->info( 'startup log' );
+	throw new RuntimeException( 'failure after extension registration' );
+}
+
 function wfMooncellSentryTestSettings( $settings ): void {
 	[ , $mode, $scenario ] = $GLOBALS['argv'];
 	$settings->loadArray( [ 'config' => [
@@ -46,6 +51,7 @@ function wfMooncellSentryTestSettings( $settings ): void {
 		'DebugLogGroups' => [ 'exception' => '/dev/null' ],
 	] ] );
 
+	wfLoadExtension( 'MooncellSentry' );
 	$dsn = 'https://public@example.invalid/1';
 	$options = [
 		'traces_sample_rate' => $scenario === 'unsampled' ? 0.0 : 1.0,
@@ -97,16 +103,10 @@ function wfMooncellSentryTestSettings( $settings ): void {
 		$GLOBALS['wgMooncellSentryOptions'] = $options;
 	}
 
-	if ( $scenario === 'manifest' ) {
-		wfLoadExtension( 'MooncellSentry' );
-	} else {
-		require dirname( __DIR__, 3 ) . '/bootstrap.php';
+	if ( $scenario === 'after-registration' ) {
+		define( 'MW_FINAL_SETUP_CALLBACK', 'wfMooncellSentryTestFailAfterRegistration' );
 	}
-	if ( $scenario === 'registration' ) {
-		\Sentry\logger()->info( 'startup log' );
-		throw new RuntimeException( 'failure before extension registration' );
-	}
-	if ( $scenario === 'startup' || $scenario === 'manifest' ) {
+	if ( $scenario === 'startup' ) {
 		$GLOBALS['wgHooks']['SetupAfterCache'][] = static function () {
 			\Sentry\logger()->info( 'startup log' );
 			throw new RuntimeException( 'failure in SetupAfterCache' );

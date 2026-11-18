@@ -152,7 +152,10 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 	 */
 	public function testBootFailure( string $mode, string $scenario, string $message ): void {
 		$records = $this->runFixture( $mode, $scenario, 255 );
-		$this->assertSame( [ $message ], array_column( $records['event'], 'message' ) );
+		// The web output handler can emit deprecations at shutdown if MW services are not ready yet.
+		$messages = array_column( $records['event'], 'message' );
+		$this->assertSame( $message, $messages[0] );
+		$this->assertSame( 1, array_count_values( $messages )[$message] );
 		$this->assertNotEmpty( $records['event'][0]['request_id'] );
 		$this->assertSame( 'startup log', $records['log'][0]['logs'][0]['body'] );
 		$this->assertCount( 1, $records['transport_closed'] );
@@ -262,10 +265,9 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 
 	public static function provideBootFailures(): array {
 		return [
-			[ 'managed', 'registration', 'failure before extension registration' ],
+			[ 'managed', 'after-registration', 'failure after extension registration' ],
 			[ 'managed', 'startup', 'failure in SetupAfterCache' ],
 			[ 'legacy', 'startup', 'failure in SetupAfterCache' ],
-			[ 'managed', 'manifest', 'failure in SetupAfterCache' ],
 		];
 	}
 

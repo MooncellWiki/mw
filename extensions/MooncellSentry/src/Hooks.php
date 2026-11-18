@@ -11,8 +11,9 @@ use Sentry\State\Scope;
 
 final class Hooks {
 	private static ?RequestTrace $requestTrace = null;
-	/** Null until a client exists, false when the legacy site hook owns capture. */
-	private static ?bool $captureExceptions = null;
+
+	/** True when this extension initialized the SDK and owns exception capture. */
+	private static bool $captureExceptions = false;
 	private static bool $shutdownRegistered = false;
 	private static int $shutdownErrorType = 0;
 
@@ -20,9 +21,6 @@ final class Hooks {
 	public static function onRegistration(): void {
 		global $wgMooncellSentryDsn, $wgMooncellSentryOptions;
 
-		if ( self::$captureExceptions !== null ) {
-			return;
-		}
 		$dsn = $wgMooncellSentryDsn ?? '';
 		if ( $dsn === '' && SentrySdk::getCurrentHub()->getClient() === null ) {
 			return;
