@@ -4,6 +4,8 @@ namespace MediaWiki\Extension\MooncellSentry;
 
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Request\WebRequest;
+use Sentry\Event;
+use Sentry\EventType;
 use Sentry\SentrySdk;
 use Sentry\State\Scope;
 
@@ -12,6 +14,7 @@ final class Hooks {
 	/** Null until a client exists, false when the legacy site hook owns capture. */
 	private static ?bool $captureExceptions = null;
 	private static bool $shutdownRegistered = false;
+	private static int $shutdownErrorType = 0;
 
 	/** Called after site settings, before MediaWiki installs its PHP handlers. */
 	public static function onRegistration(): void {
@@ -21,6 +24,13 @@ final class Hooks {
 			return;
 		}
 		$dsn = $wgMooncellSentryDsn ?? '';
+		if ( $dsn === '' && SentrySdk::getCurrentHub()->getClient() === null ) {
+			return;
+		}
+		// The SDK's fatal reporter and MW session cleanup can themselves issue warnings.
+		register_shutdown_function( static function () {
+			self::$shutdownErrorType = error_get_last()['type'] ?? 0;
+		} );
 		if ( $dsn !== '' ) {
 			// MW later takes over warnings and exceptions. The SDK's independent fatal
 			// shutdown listener continues to report engine failures, including OOMs.
@@ -30,12 +40,19 @@ final class Hooks {
 				'profiles_sample_rate' => 0.1,
 				'enable_logs' => true,
 			] );
-			\Sentry\configureScope( static function ( Scope $scope ) {
-				$scope->setTag( 'mw_request_id', WebRequest::getRequestId() );
-			} );
-		} elseif ( SentrySdk::getCurrentHub()->getClient() === null ) {
-			return;
 		}
+		\Sentry\configureScope( static function ( Scope $scope ) {
+			$scope->setTag( 'mw_request_id', WebRequest::getRequestId() );
+			if ( MW_ENTRY_POINT === 'cli' ) {
+				// JobRunner adopts each job's request ID. SDK fatal events bypass LogException.
+				$scope->addEventProcessor( static function ( Event $event ): Event {
+					if ( $event->getType() === EventType::event() ) {
+						$event->setTag( 'mw_request_id', WebRequest::getRequestId() );
+					}
+					return $event;
+				} );
+			}
+		} );
 		self::$captureExceptions = $dsn !== '';
 		register_shutdown_function( static function () {
 			// Setup can terminate before ExtensionFunctions gets to register the normal finalizer.
@@ -61,7 +78,7 @@ final class Hooks {
 	private static function finishRequest(): void {
 		try {
 			if ( self::$requestTrace !== null ) {
-				self::$requestTrace->finish( http_response_code() ?: 200 );
+				self::$requestTrace->finish( http_response_code() ?: 200, self::$shutdownErrorType );
 			} else {
 				\Sentry\logger()->flush();
 			}
@@ -74,12 +91,6 @@ final class Hooks {
 		if ( $suppressed || !self::$captureExceptions ) {
 			return;
 		}
-		\Sentry\withScope( static function ( Scope $scope ) use ( $e ) {
-			// CLI workers can change the request ID between jobs.
-			if ( self::$requestTrace === null ) {
-				$scope->setTag( 'mw_request_id', WebRequest::getRequestId() );
-			}
-			\Sentry\captureException( $e );
-		} );
+		\Sentry\withScope( static fn () => \Sentry\captureException( $e ) );
 	}
 }

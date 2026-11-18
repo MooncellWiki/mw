@@ -1,5 +1,6 @@
 <?php
 
+use MediaWiki\Context\RequestContext;
 use MediaWiki\Deferred\DeferredUpdates;
 use MediaWiki\Request\WebRequest;
 use Psr\Http\Message\ServerRequestInterface;
@@ -18,12 +19,12 @@ if ( PHP_SAPI !== 'cli' ) {
 }
 
 [ , $mode, $scenario ] = $argv;
-define( 'MW_ENTRY_POINT', $mode === 'cli' ? 'cli' : 'index' );
+define( 'MW_ENTRY_POINT', $argv[3] ?? ( $mode === 'cli' ? 'cli' : 'index' ) );
 define( 'MW_NO_SESSION', true );
 define( 'MW_CONFIG_CALLBACK', 'wfMooncellSentryTestSettings' );
 $_SERVER['REQUEST_METHOD'] = 'GET';
-$_SERVER['SCRIPT_NAME'] = '/index.php';
-$_SERVER['REQUEST_URI'] = '/index.php';
+$_SERVER['SCRIPT_NAME'] = '/' . MW_ENTRY_POINT . '.php';
+$_SERVER['REQUEST_URI'] = $_SERVER['SCRIPT_NAME'];
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 
 // Keep transport records separate from MW's error pages and PHP's fatal error output.
@@ -58,6 +59,8 @@ function wfMooncellSentryTestSettings( $settings ): void {
 					'message' => ( $event->getExceptions()[0] ?? null )?->getValue(),
 					'name' => $event->getTransaction(),
 					'status' => $event->getContexts()['trace']['status'] ?? null,
+					'http_status' => $event->getContexts()['response']['status_code'] ?? null,
+					'data' => $event->getContexts()['trace']['data'] ?? [],
 					'logs' => array_map( static fn ( Log $log ) => [
 						'body' => $log->getBody(), 'trace' => $log->getTraceId(),
 					], $event->getLogs() ),
@@ -109,6 +112,25 @@ function wfMooncellSentryTestSettings( $settings ): void {
 			throw new RuntimeException( 'failure in SetupAfterCache' );
 		};
 	}
+	if ( $scenario === 'request' || $scenario === 'unsampled' ) {
+		$GLOBALS['wgHooks']['SetupAfterCache'][] = static function () {
+			MWExceptionHandler::logException( new RuntimeException( 'setup error' ) );
+			\Sentry\logger()->info( 'setup log' );
+		};
+	}
+	if ( $scenario === 'explicit-action' ) {
+		$GLOBALS['wgHooks']['SetupAfterCache'][] = static function () {
+			RequestContext::getMain()->getRequest()->setVal( 'action', 'edit' );
+		};
+	}
+	if ( $scenario === 'oom' ) {
+		$GLOBALS['wgHooks']['SetupAfterCache'][] = static function () {
+			// Like session cleanup, this runs after the fatal listeners and before the transaction ends.
+			register_shutdown_function( static function () {
+				trigger_error( 'cleanup warning', E_USER_WARNING );
+			} );
+		};
+	}
 }
 
 // Model a reporter registered before the extension's normal shutdown finalizer.
@@ -133,6 +155,13 @@ wfMooncellSentryTestRecord( [
 http_response_code( 200 );
 switch ( $scenario ) {
 	case 'oom':
+		if ( MW_ENTRY_POINT === 'cli' ) {
+			WebRequest::overrideRequestId( 'job-origin' );
+		} else {
+			echo 'OK';
+			ob_end_flush();
+			flush();
+		}
 		// One allocation exceeds this child process's limit, independent of available host memory.
 		ini_set( 'memory_limit', (string)( memory_get_usage( true ) + 8 * 1024 * 1024 ) );
 		echo strlen( str_repeat( 'x', 16 * 1024 * 1024 ) );

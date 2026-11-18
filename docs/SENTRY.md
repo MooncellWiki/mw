@@ -49,7 +49,7 @@ MediaWiki setup
 Request, output and DeferredUpdates
   capture exceptions and collect SDK logs on the active trace
 PHP shutdown
-  SDK fatal listener → capture engine fatals
+  remember the initial PHP error type → SDK fatal listener captures engine fatals
   finish transaction/profile → flush SDK logs → restore scope → flush transport
 ```
 
@@ -58,8 +58,9 @@ response produces an error event and an `ok` transaction. An engine fatal marks
 the transaction `internal_error`, including after response headers have been sent.
 When a web job temporarily adopts its originating request ID, its error retains
 the HTTP transaction's `mw_request_id` and records the job's ID in
-`mw_job_request_id`. CLI workers use the current job's request ID and flush logs
-on shutdown. A failure during bootstrap also flushes logs collected up to that point.
+`mw_job_request_id`. CLI errors carry the current job's request ID, including
+native fatals captured directly by the SDK. CLI workers flush logs on shutdown.
+A failure during bootstrap also flushes logs collected up to that point.
 
 Profiling starts in late setup. A sampled profile carries the transaction event ID
 and trace ID. The request scope covers post-send updates and shutdown reporters
@@ -110,18 +111,20 @@ References:
 
 ## Investigation
 
-Once the web transaction starts, errors and SDK logs share its trace ID. Error
-events and transactions also carry `mw_request_id`, which can be used to find
-errors captured earlier during bootstrap. Unsampled requests keep the trace ID
-on errors and logs. Stored transactions and profiles depend on sampling. For focused investigations,
-temporarily increase sampling for a chosen population using the options setting.
+The web transaction continues the trace used by SDK logs and captured errors
+during bootstrap. Error events and transactions also carry `mw_request_id`.
+Unsampled requests keep the trace ID on errors and logs. Stored transactions
+and profiles depend on sampling. For focused investigations, temporarily
+increase sampling for a chosen population using the options setting.
 
 Start from an issue event's trace link and inspect its transaction/profile, or
 search errors/transactions by request ID. Transaction names are entry points
-such as `index` or `api`, with method/action in transaction data. Views filtered
-to `transaction=run` need to change. Historical errors may have different trace
-IDs from their transactions; this does not relink history, join browser/backend
-traces, or ingest ordinary MediaWiki logs.
+such as `index` or `api`. Every web transaction records `http.request.method`.
+The `index` and `api` entry points also record `mw.action`, defaulting to `view`
+and `help` respectively. Views filtered to `transaction=run` need to change.
+Historical errors may have different trace IDs from their transactions.
+Browser-to-backend tracing and ingestion of ordinary MediaWiki logs require
+separate integrations.
 
 ## Regression checks
 

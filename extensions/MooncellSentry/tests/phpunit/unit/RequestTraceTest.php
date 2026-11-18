@@ -54,6 +54,8 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 			$root = $hub->getTransaction();
 			$this->assertNotNull( $root );
 			$this->assertNull( $root->getEndTimestamp() );
+			$this->assertSame( (string)$previousSpan->getTraceId(), (string)$root->getTraceId() );
+			$this->assertSame( (string)$previousSpan->getSpanId(), (string)$root->getParentSpanId() );
 
 			\Sentry\logger()->info( 'execute log' );
 			\Sentry\captureException( new RuntimeException( 'execute error' ) );
@@ -105,11 +107,11 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 	 * @covers \MediaWiki\Extension\MooncellSentry\Hooks
 	 * @dataProvider provideRequests
 	 */
-	public function testRequestShutdown( string $mode, string $scenario ): void {
-		$records = $this->runFixture( $mode, $scenario );
+	public function testRequestShutdown( string $mode, string $scenario, string $entryPoint = 'index' ): void {
+		$records = $this->runFixture( $mode, $scenario, 0, $entryPoint );
 		$setup = $records['setup'][0];
 		$this->assertSame( $mode !== 'disabled', $setup['client'] );
-		$this->assertSame( !in_array( $mode, [ 'cli', 'disabled' ], true ), $setup['tracing'] );
+		$this->assertSame( $entryPoint !== 'cli' && $mode !== 'disabled', $setup['tracing'] );
 		if ( $mode === 'disabled' ) {
 			$this->assertSame( [ 'setup' ], array_keys( $records ) );
 			return;
@@ -119,7 +121,7 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 		if ( $mode !== 'legacy' ) {
 			$this->assertSame( 0.1, $setup['profile_rate'] );
 		}
-		$this->assertSame( [ 'PHP Warning: recoverable warning', 'deferred error', 'shutdown error' ],
+		$this->assertSame( [ 'setup error', 'PHP Warning: recoverable warning', 'deferred error', 'shutdown error' ],
 			array_column( $records['event'], 'message' ) );
 		$this->assertSame( [ $setup['request_id'] ], array_values( array_unique(
 			array_column( $records['event'], 'request_id' ) ) ) );
@@ -127,12 +129,12 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 		$this->assertCount( 1, $records['transport_closed'] );
 		$this->assertCount( 1, $records['log'] );
 		$logs = $records['log'][0]['logs'];
-		$this->assertSame( [ 'deferred log', 'shutdown log' ], array_column( $logs, 'body' ) );
+		$this->assertSame( [ 'setup log', 'deferred log', 'shutdown log' ], array_column( $logs, 'body' ) );
 		$trace = $records['event'][0]['trace'];
 		$this->assertNotEmpty( $trace );
 		$this->assertSame( [ $trace ], array_values( array_unique( array_column( $records['event'], 'trace' ) ) ) );
 		$this->assertSame( [ $trace ], array_values( array_unique( array_column( $logs, 'trace' ) ) ) );
-		if ( $mode === 'cli' || $scenario === 'unsampled' ) {
+		if ( $entryPoint === 'cli' || $scenario === 'unsampled' ) {
 			$this->assertArrayNotHasKey( 'transaction', $records );
 			return;
 		}
@@ -160,13 +162,27 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 	/** @covers \MediaWiki\Extension\MooncellSentry\Hooks */
 	public function testNativeFatal(): void {
 		$records = $this->runFixture( 'managed', 'oom', 255 );
-		$this->assertCount( 1, $records['event'] );
+		$this->assertCount( 2, $records['event'] );
+		$this->assertSame( 'PHP Warning: cleanup warning', $records['event'][1]['message'] );
 		$error = $records['event'][0];
 		$this->assertStringContainsString( 'Allowed memory size', $error['message'] );
 		$transaction = $records['transaction'][0];
 		$this->assertSame( $transaction['trace'], $error['trace'] );
 		$this->assertSame( $records['setup'][0]['request_id'], $error['request_id'] );
+		$this->assertSame( 200, $transaction['http_status'] );
 		$this->assertSame( 'internal_error', $transaction['status'] );
+	}
+
+	/**
+	 * @covers \MediaWiki\Extension\MooncellSentry\Hooks
+	 * @dataProvider provideJobModes
+	 */
+	public function testCliJobFatal( string $mode ): void {
+		$records = $this->runFixture( $mode, 'oom', 255, 'cli' );
+		$this->assertStringContainsString( 'Allowed memory size', $records['event'][0]['message'] );
+		$this->assertNotSame( 'job-origin', $records['setup'][0]['request_id'] );
+		$this->assertSame( [ 'job-origin', 'job-origin' ], array_column( $records['event'], 'request_id' ) );
+		$this->assertArrayNotHasKey( 'transaction', $records );
 	}
 
 	/**
@@ -197,11 +213,25 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 		$this->assertSame( 'unavailable', $records['transaction'][0]['status'] );
 	}
 
-	private function runFixture( string $mode, string $scenario, int $expectedExit = 0 ): array {
+	/** @dataProvider provideActions */
+	public function testTransactionAction( string $entryPoint, string $scenario, ?string $expected ): void {
+		$records = $this->runFixture( 'managed', $scenario, 0, $entryPoint );
+		$data = $records['transaction'][0]['data'];
+		$this->assertSame( 'GET', $data['http.request.method'] );
+		if ( $expected === null ) {
+			$this->assertArrayNotHasKey( 'mw.action', $data );
+		} else {
+			$this->assertSame( $expected, $data['mw.action'] );
+		}
+	}
+
+	private function runFixture(
+		string $mode, string $scenario, int $expectedExit = 0, string $entryPoint = 'index'
+	): array {
 		$diagnostics = tmpfile();
 		// phpcs:ignore MediaWiki.Usage.ForbiddenFunctions.proc_open
 		$process = proc_open(
-			[ PHP_BINARY, dirname( __DIR__ ) . '/fixtures/web-request.php', $mode, $scenario ],
+			[ PHP_BINARY, dirname( __DIR__ ) . '/fixtures/web-request.php', $mode, $scenario, $entryPoint ],
 			[ 1 => $diagnostics, 2 => $diagnostics, 3 => [ 'pipe', 'w' ] ], $pipes
 		);
 		$lines = preg_split( '/\n/', stream_get_contents( $pipes[3] ), -1, PREG_SPLIT_NO_EMPTY );
@@ -225,7 +255,7 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 
 	public static function provideRequests(): array {
 		return [
-			[ 'managed', 'request' ], [ 'legacy', 'request' ], [ 'cli', 'request' ],
+			[ 'managed', 'request' ], [ 'legacy', 'request' ], [ 'managed', 'request', 'cli' ],
 			[ 'disabled', 'request' ], [ 'managed', 'unsampled' ],
 		];
 	}
@@ -241,5 +271,13 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 
 	public static function provideJobModes(): array {
 		return [ [ 'managed' ], [ 'legacy' ] ];
+	}
+
+	public static function provideActions(): array {
+		return [
+			[ 'index', 'default-action', 'view' ], [ 'index', 'explicit-action', 'edit' ],
+			[ 'api', 'default-action', 'help' ], [ 'api', 'explicit-action', 'edit' ],
+			[ 'load', 'default-action', null ], [ 'rest', 'explicit-action', null ],
+		];
 	}
 }

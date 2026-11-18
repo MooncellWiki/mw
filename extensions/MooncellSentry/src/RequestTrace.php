@@ -13,6 +13,7 @@ use Throwable;
 
 /** Owns the Sentry scope/transaction until PHP shutdown, after MediaWiki's post-send work. */
 final class RequestTrace {
+	private const DEFAULT_ACTIONS = [ 'index' => 'view', 'api' => 'help' ];
 	private HubInterface $hub;
 	private Transaction $transaction;
 	private bool $finished = false;
@@ -21,9 +22,18 @@ final class RequestTrace {
 		$this->hub = $hub;
 		$scope = $hub->pushScope();
 		try {
-			$this->transaction = $hub->startTransaction(
-				TransactionContext::make()->setName( $entryPoint )->setOp( 'http.server' )
-			);
+			$context = TransactionContext::make()->setName( $entryPoint )->setOp( 'http.server' );
+			$parent = $scope->getSpan();
+			if ( $parent !== null ) {
+				$context->setTraceId( $parent->getTraceId() )->setParentSpanId( $parent->getSpanId() );
+			} else {
+				// Bootstrap errors and logs already reference this scope's trace and span.
+				$propagation = $scope->getPropagationContext();
+				$context->setTraceId( $propagation->getTraceId() )
+					->setSpanId( $propagation->getSpanId() )
+					->setParentSpanId( $propagation->getParentSpanId() );
+			}
+			$this->transaction = $hub->startTransaction( $context );
 			// Also bind unsampled transactions: errors/logs still need a consistent trace ID.
 			$hub->setSpan( $this->transaction );
 			$requestId = WebRequest::getRequestId();
@@ -38,25 +48,26 @@ final class RequestTrace {
 				}
 				return $event;
 			} );
-			$this->transaction->setData( [
-				'http.request.method' => $request->getMethod(),
-				'mw.action' => $request->getText( 'action', 'view' ),
-			] );
+			$data = [ 'http.request.method' => $request->getMethod() ];
+			if ( isset( self::DEFAULT_ACTIONS[$entryPoint] ) ) {
+				$data['mw.action'] = $request->getText( 'action', self::DEFAULT_ACTIONS[$entryPoint] );
+			}
+			$this->transaction->setData( $data );
 		} catch ( Throwable $e ) {
 			$hub->popScope();
 			throw $e;
 		}
 	}
 
-	public function finish( int $httpStatus = 200 ): void {
+	public function finish( int $httpStatus = 200, int $shutdownErrorType = 0 ): void {
 		if ( $this->finished ) {
 			return;
 		}
 		$this->finished = true;
 		try {
-			$lastError = error_get_last()['type'] ?? 0;
+			$errorTypes = $shutdownErrorType | ( error_get_last()['type'] ?? 0 );
 			$this->transaction->setHttpStatus( $httpStatus );
-			if ( $lastError & ( E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR |
+			if ( $errorTypes & ( E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR |
 				E_USER_ERROR | E_RECOVERABLE_ERROR ) ) {
 				// PHP can terminate after a successful response has already been sent.
 				$this->transaction->setStatus( SpanStatus::internalError() );
