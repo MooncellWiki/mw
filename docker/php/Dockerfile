@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.7
-# 基础镜像按 digest 固定：Docker Hub 会给同一个 8.3.36-fpm 标签重新推送带 Debian 更新的版本，
+# 基础镜像按 digest 固定：Docker Hub 会给同一个 8.3.37-fpm 标签重新推送带 Debian 更新的版本，
 # 不固定的话同一份 Dockerfile 每次构建出来都不一样。升级（包括只为拿 Debian 安全更新）时改这里：
-#   docker buildx imagetools inspect php:8.3.36-fpm --format '{{.Manifest.Digest}}'
-FROM php:8.3.36-fpm@sha256:d0dea3f5d95314eac94a732469f4cf0ee658a22c2ce3f2612272b9d5b42d1a72
+#   docker buildx imagetools inspect php:8.3.37-fpm --format '{{.Manifest.Digest}}'
+FROM php:8.3.37-fpm@sha256:91e22c46bcaec4bec0228ead6cfb66f9e9286adeea37eb7982336bdb104bd104
 ENV TZ=Asia/Shanghai
 
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
