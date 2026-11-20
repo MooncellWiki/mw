@@ -194,9 +194,6 @@ abstract class MediaWikiEntryPoint {
 	 * prepareForOutput(), and postOutputShutdown().
 	 */
 	final public function run() {
-		$transactionContext = \Sentry\Tracing\TransactionContext::make()->setName('run');
-		$transaction = \Sentry\startTransaction($transactionContext);
-
 		$this->setup();
 
 		try {
@@ -210,8 +207,6 @@ abstract class MediaWikiEntryPoint {
 		}
 
 		$this->postOutputShutdown();
-
-		$transaction->finish();
 	}
 
 	/**

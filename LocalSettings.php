@@ -643,4 +643,6 @@ $wgCrawlerProtectedActions = [
 ];
 $wgCrawlerProtectionRawDenial = true;
 
+wfLoadExtension( 'MooncellSentry' );
+
 require_once __DIR__ . '/etc/post-config.php';
