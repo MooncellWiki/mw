@@ -12,12 +12,14 @@ use Sentry\State\Hub;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
+use Sentry\Tracing\Transaction;
+use Sentry\Tracing\TransactionContext;
 
 /** @covers \MediaWiki\Extension\MooncellSentry\RequestTrace */
 class RequestTraceTest extends MediaWikiUnitTestCase {
 
 	/** @dataProvider provideSampling */
-	public function testRequestCorrelation( float $rate ) {
+	public function testRequestCorrelation( float $rate, ?bool $parentSampled ) {
 		$previousHub = SentrySdk::getCurrentHub();
 		$events = [];
 		$logs = [];
@@ -45,7 +47,14 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 				},
 			] );
 			$hub = SentrySdk::getCurrentHub();
-			$previousSpan = new Span( SpanContext::make() );
+			if ( $parentSampled === null ) {
+				$previousSpan = new Span( SpanContext::make() );
+			} else {
+				$context = TransactionContext::make()->setSampled( $parentSampled );
+				$context->getMetadata()->setSampleRand( 0.5 );
+				$parent = new Transaction( $context, $hub );
+				$previousSpan = $parent->startChild( SpanContext::make() );
+			}
 			$hub->setSpan( $previousSpan );
 			$request = $this->createMock( WebRequest::class );
 			$request->method( 'getMethod' )->willReturn( 'GET' );
@@ -53,6 +62,12 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 			$trace = new RequestTrace( $hub, 'index', $request );
 			$root = $hub->getTransaction();
 			$this->assertNotNull( $root );
+			$expectedSampled = $parentSampled ?? ( $rate === 1.0 );
+			$this->assertSame( $expectedSampled, $root->getSampled() );
+			if ( $parentSampled !== null ) {
+				$this->assertSame( 0.5, $root->getMetadata()->getSampleRand() );
+				$this->assertNull( $parent->getDynamicSamplingContext()->get( 'sample_rate' ) );
+			}
 			$this->assertNull( $root->getEndTimestamp() );
 			$this->assertSame( (string)$previousSpan->getTraceId(), (string)$root->getTraceId() );
 			$this->assertSame( (string)$previousSpan->getSpanId(), (string)$root->getParentSpanId() );
@@ -63,7 +78,7 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 			\Sentry\logger()->info( 'deferred log' );
 			\Sentry\captureException( new RuntimeException( 'deferred error' ) );
 
-			if ( $rate === 1.0 && extension_loaded( 'excimer' ) ) {
+			if ( $expectedSampled && extension_loaded( 'excimer' ) ) {
 				// Give the real sampling profiler enough CPU work to produce a profile.
 				$until = microtime( true ) + 0.03;
 				while ( microtime( true ) < $until ) {
@@ -85,7 +100,7 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 			foreach ( $logs as $log ) {
 				$this->assertSame( (string)$root->getTraceId(), $log->getTraceId() );
 			}
-			$this->assertCount( $rate === 1.0 ? 1 : 0, $transactions );
+			$this->assertCount( $expectedSampled ? 1 : 0, $transactions );
 			if ( $transactions ) {
 				$this->assertSame( 'index', $transactions[0]->getTransaction() );
 				$this->assertSame( WebRequest::getRequestId(), $transactions[0]->getTags()['mw_request_id'] );
@@ -134,12 +149,17 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 		$this->assertNotEmpty( $trace );
 		$this->assertSame( [ $trace ], array_values( array_unique( array_column( $records['event'], 'trace' ) ) ) );
 		$this->assertSame( [ $trace ], array_values( array_unique( array_column( $logs, 'trace' ) ) ) );
+		$sampleRand = $records['event'][0]['sample_rand'];
+		$this->assertNotNull( $sampleRand );
+		$this->assertSame( [ $sampleRand ], array_values( array_unique(
+			array_column( $records['event'], 'sample_rand' ) ) ) );
 		if ( $entryPoint === 'cli' || $scenario === 'unsampled' ) {
 			$this->assertArrayNotHasKey( 'transaction', $records );
 			return;
 		}
 		$this->assertCount( 1, $records['transaction'] );
 		$transaction = $records['transaction'][0];
+		$this->assertSame( $sampleRand, $transaction['sample_rand'] );
 		$this->assertSame( 'ok', $transaction['status'] );
 		$this->assertSame( 'index', $transaction['name'] );
 		$this->assertNull( $transaction['special_page'] );
@@ -213,6 +233,28 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 	}
 
 	/** @covers \MediaWiki\Extension\MooncellSentry\Hooks */
+	public function testTransportFailurePreservesCliSuccess(): void {
+		$records = $this->runFixture( 'managed', 'flush-failure', 0, 'cli' );
+		$this->assertCount( 1, $records['transport_closed'] );
+		$this->assertArrayNotHasKey( 'event', $records );
+	}
+
+	/** @covers \MediaWiki\Extension\MooncellSentry\Hooks */
+	public function testConfiguredPhpErrorMask(): void {
+		$records = $this->runFixture( 'managed', 'error-mask' );
+		$this->assertSame( [ 'PHP Notice: included notice', 'application exception' ],
+			array_column( $records['event'], 'message' ) );
+	}
+
+	public function testSiteSamplerReceivesBootstrapContext(): void {
+		$records = $this->runFixture( 'managed', 'bootstrap-sampler' );
+		$this->assertSame( [
+			'type' => 'sampling', 'parent_sampled' => true, 'parent_rate' => 0.5, 'sample_rand' => 0.25,
+		], $records['sampling'][0] );
+		$this->assertArrayNotHasKey( 'transaction', $records );
+	}
+
+	/** @covers \MediaWiki\Extension\MooncellSentry\Hooks */
 	public function testHttpFailureStatus(): void {
 		$records = $this->runFixture( 'managed', 'http-error' );
 		$this->assertSame( 'unavailable', $records['transaction'][0]['status'] );
@@ -255,7 +297,7 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 	}
 
 	public static function provideSampling(): array {
-		return [ [ 1.0 ], [ 0.0 ] ];
+		return [ [ 1.0, null ], [ 0.0, null ], [ 0.0, true ], [ 1.0, false ] ];
 	}
 
 	public static function provideRequests(): array {
@@ -267,6 +309,7 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 
 	public static function provideBootFailures(): array {
 		return [
+			[ 'managed', 'peer-registration', 'failure in peer registration' ],
 			[ 'managed', 'after-registration', 'failure after extension registration' ],
 			[ 'managed', 'startup', 'failure in SetupAfterCache' ],
 			[ 'legacy', 'startup', 'failure in SetupAfterCache' ],

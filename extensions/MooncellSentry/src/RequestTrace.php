@@ -6,6 +6,7 @@ use MediaWiki\Request\WebRequest;
 use Sentry\Event;
 use Sentry\EventType;
 use Sentry\State\HubInterface;
+use Sentry\State\Scope;
 use Sentry\Tracing\SpanStatus;
 use Sentry\Tracing\Transaction;
 use Sentry\Tracing\TransactionContext;
@@ -22,17 +23,7 @@ final class RequestTrace {
 		$this->hub = $hub;
 		$scope = $hub->pushScope();
 		try {
-			$context = TransactionContext::make()->setName( $entryPoint )->setOp( 'http.server' );
-			$parent = $scope->getSpan();
-			if ( $parent !== null ) {
-				$context->setTraceId( $parent->getTraceId() )->setParentSpanId( $parent->getSpanId() );
-			} else {
-				// Bootstrap errors and logs already reference this scope's trace and span.
-				$propagation = $scope->getPropagationContext();
-				$context->setTraceId( $propagation->getTraceId() )
-					->setSpanId( $propagation->getSpanId() )
-					->setParentSpanId( $propagation->getParentSpanId() );
-			}
+			$context = self::continueTrace( $scope )->setName( $entryPoint )->setOp( 'http.server' );
 			$this->transaction = $hub->startTransaction( $context );
 			// Also bind unsampled transactions: errors/logs still need a consistent trace ID.
 			$hub->setSpan( $this->transaction );
@@ -57,6 +48,46 @@ final class RequestTrace {
 			$hub->popScope();
 			throw $e;
 		}
+	}
+
+	private static function continueTrace( Scope $scope ): TransactionContext {
+		$context = TransactionContext::make();
+		$parent = $scope->getSpan();
+		if ( $parent !== null ) {
+			$context->setTraceId( $parent->getTraceId() )
+				->setParentSpanId( $parent->getSpanId() )
+				->setParentSampled( $parent->getSampled() );
+			$parentTransaction = $parent->getTransaction();
+			$sampling = $parentTransaction?->getDynamicSamplingContext();
+			$parentMetadata = $parentTransaction?->getMetadata();
+			$sampleRand = $parentMetadata?->getSampleRand();
+			$parentRate = $parentMetadata?->getSamplingRate() ?? $sampling?->get( 'sample_rate' );
+		} else {
+			// Bootstrap events have already used this span ID and sampling value.
+			$propagation = $scope->getPropagationContext();
+			$context->setTraceId( $propagation->getTraceId() )
+				->setSpanId( $propagation->getSpanId() )
+				->setParentSpanId( $propagation->getParentSpanId() );
+			$sampling = $propagation->getDynamicSamplingContext();
+			$sampleRand = $propagation->getSampleRand();
+			$parentRate = $sampling?->get( 'sample_rate' );
+			if ( $sampling?->has( 'sampled' ) ) {
+				$context->setParentSampled( $sampling->get( 'sampled' ) === 'true' );
+			}
+		}
+
+		$metadata = $context->getMetadata();
+		if ( $sampleRand !== null ) {
+			$metadata->setSampleRand( $sampleRand );
+		}
+		if ( $parentRate !== null ) {
+			$metadata->setParentSamplingRate( (float)$parentRate );
+		}
+		if ( $sampling !== null ) {
+			// The SDK writes the effective sample rate here when it starts the transaction.
+			$metadata->setDynamicSamplingContext( clone $sampling );
+		}
+		return $context;
 	}
 
 	public function markRunJobs(): void {

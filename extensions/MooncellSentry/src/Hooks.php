@@ -2,6 +2,7 @@
 
 namespace MediaWiki\Extension\MooncellSentry;
 
+use ErrorException;
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Request\WebRequest;
 use MediaWiki\SpecialPage\SpecialPage;
@@ -9,6 +10,7 @@ use Sentry\Event;
 use Sentry\EventType;
 use Sentry\SentrySdk;
 use Sentry\State\Scope;
+use Throwable;
 
 final class Hooks {
 	private static ?RequestTrace $requestTrace = null;
@@ -20,8 +22,10 @@ final class Hooks {
 
 	/** Called after site settings, before MediaWiki installs its PHP handlers. */
 	public static function onRegistration(): void {
-		global $wgMooncellSentryDsn, $wgMooncellSentryOptions;
+		global $wgExtensionFunctions, $wgMooncellSentryDsn, $wgMooncellSentryOptions;
 
+		// MW has already merged all manifests' setup functions. Register the finalizer after them.
+		$wgExtensionFunctions[] = [ self::class, 'onSetup' ];
 		$dsn = $wgMooncellSentryDsn ?? '';
 		if ( $dsn === '' && SentrySdk::getCurrentHub()->getClient() === null ) {
 			return;
@@ -81,8 +85,13 @@ final class Hooks {
 			} else {
 				\Sentry\logger()->flush();
 			}
-		} finally {
+		} catch ( Throwable $e ) {
+			error_log( 'MooncellSentry could not finish request telemetry: ' . $e->getMessage() );
+		}
+		try {
 			SentrySdk::getCurrentHub()->getClient()?->flush();
+		} catch ( Throwable $e ) {
+			error_log( 'MooncellSentry could not flush its transport: ' . $e->getMessage() );
 		}
 	}
 
@@ -92,9 +101,15 @@ final class Hooks {
 		}
 	}
 
-	public static function onLogException( \Throwable $e, bool $suppressed ): void {
+	public static function onLogException( Throwable $e, bool $suppressed ): void {
 		if ( $suppressed || !self::$captureExceptions ) {
 			return;
+		}
+		if ( $e instanceof ErrorException ) {
+			$errorTypes = SentrySdk::getCurrentHub()->getClient()?->getOptions()->getErrorTypes() ?? 0;
+			if ( ( $errorTypes & $e->getSeverity() ) === 0 ) {
+				return;
+			}
 		}
 		\Sentry\withScope( static fn () => \Sentry\captureException( $e ) );
 	}

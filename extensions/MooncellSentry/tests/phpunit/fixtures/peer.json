@@ -1,0 +1,6 @@
+{
+	"name": "MooncellSentryTestPeer",
+	"manifest_version": 2,
+	"callback": "wfMooncellSentryTestPeerRegistration",
+	"ExtensionFunctions": [ "wfMooncellSentryTestPeerSetup" ]
+}

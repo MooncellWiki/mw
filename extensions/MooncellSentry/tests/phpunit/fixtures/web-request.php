@@ -14,6 +14,7 @@ use Sentry\Integration\RequestIntegration;
 use Sentry\Logs\Log;
 use Sentry\SentrySdk;
 use Sentry\State\Scope;
+use Sentry\Tracing\SamplingContext;
 use Sentry\Transport\Result;
 use Sentry\Transport\ResultStatus;
 use Sentry\Transport\TransportInterface;
@@ -43,6 +44,22 @@ function wfMooncellSentryTestFailAfterRegistration(): void {
 	throw new RuntimeException( 'failure after extension registration' );
 }
 
+function wfMooncellSentryTestPeerRegistration(): void {
+	if ( $GLOBALS['argv'][2] === 'peer-registration' ) {
+		\Sentry\logger()->info( 'startup log' );
+		throw new RuntimeException( 'failure in peer registration' );
+	}
+}
+
+function wfMooncellSentryTestPeerSetup(): void {
+	if ( in_array( $GLOBALS['argv'][2], [ 'request', 'unsampled' ], true ) ) {
+		register_shutdown_function( static function () {
+			MWExceptionHandler::logException( new RuntimeException( 'shutdown error' ) );
+			\Sentry\logger()->info( 'shutdown log' );
+		} );
+	}
+}
+
 function wfMooncellSentryTestSettings( $settings ): void {
 	[ , $mode, $scenario ] = $GLOBALS['argv'];
 	$settings->loadArray( [ 'config' => [
@@ -56,6 +73,7 @@ function wfMooncellSentryTestSettings( $settings ): void {
 	] ] );
 
 	wfLoadExtension( 'MooncellSentry' );
+	wfLoadExtension( 'MooncellSentryTestPeer', __DIR__ . '/peer.json' );
 	$dsn = 'https://public@example.invalid/1';
 	$options = [
 		'traces_sample_rate' => $scenario === 'unsampled' ? 0.0 : 1.0,
@@ -64,6 +82,7 @@ function wfMooncellSentryTestSettings( $settings ): void {
 				wfMooncellSentryTestRecord( [
 					'type' => (string)$event->getType(),
 					'trace' => $event->getTraceId(),
+					'sample_rand' => $event->getSdkMetadata( 'dynamic_sampling_context' )?->get( 'sample_rand' ),
 					'request_id' => $event->getTags()['mw_request_id'] ?? null,
 					'job_id' => $event->getTags()['mw_job_request_id'] ?? null,
 					'special_page' => $event->getTags()['mw.special'] ?? null,
@@ -81,10 +100,31 @@ function wfMooncellSentryTestSettings( $settings ): void {
 
 			public function close( ?int $timeout = null ): Result {
 				wfMooncellSentryTestRecord( [ 'type' => 'transport_closed' ] );
+				if ( $GLOBALS['argv'][2] === 'flush-failure' ) {
+					throw new RuntimeException( 'transport close failed' );
+				}
 				return new Result( ResultStatus::success() );
 			}
 		},
 	];
+	if ( $scenario === 'error-mask' ) {
+		$options['error_types'] = E_ERROR | E_USER_NOTICE;
+	}
+	if ( $scenario === 'bootstrap-sampler' ) {
+		$GLOBALS['wgHooks']['SetupAfterCache'][] = static function () {
+			\Sentry\continueTrace( 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-1',
+				'sentry-sampled=true,sentry-sample_rate=0.5,sentry-sample_rand=0.25' );
+		};
+		$options['traces_sampler'] = static function ( SamplingContext $context ): float {
+			wfMooncellSentryTestRecord( [
+				'type' => 'sampling',
+				'parent_sampled' => $context->getParentSampled(),
+				'parent_rate' => $context->getTransactionContext()->getMetadata()->getParentSamplingRate(),
+				'sample_rand' => $context->getSampleRand(),
+			] );
+			return 0.0;
+		};
+	}
 	if ( $scenario === 'custom' ) {
 		$options['integrations'] = [ new RequestIntegration( new class implements RequestFetcherInterface {
 			public function fetchRequest(): ?ServerRequestInterface {
@@ -138,14 +178,6 @@ function wfMooncellSentryTestSettings( $settings ): void {
 	}
 }
 
-// Model a reporter registered before the extension's normal shutdown finalizer.
-if ( $scenario === 'request' || $scenario === 'unsampled' ) {
-	register_shutdown_function( static function () {
-		MWExceptionHandler::logException( new RuntimeException( 'shutdown error' ) );
-		\Sentry\logger()->info( 'shutdown log' );
-	} );
-}
-
 require dirname( __DIR__, 5 ) . '/includes/WebStart.php';
 $options = SentrySdk::getCurrentHub()->getClient()?->getOptions();
 wfMooncellSentryTestRecord( [
@@ -159,6 +191,12 @@ wfMooncellSentryTestRecord( [
 ] );
 http_response_code( 200 );
 switch ( $scenario ) {
+	case 'error-mask':
+		error_reporting( E_ALL );
+		trigger_error( 'excluded warning', E_USER_WARNING );
+		trigger_error( 'included notice', E_USER_NOTICE );
+		MWExceptionHandler::logException( new RuntimeException( 'application exception' ) );
+		break;
 	case 'oom':
 		if ( MW_ENTRY_POINT === 'cli' ) {
 			WebRequest::overrideRequestId( 'job-origin' );
