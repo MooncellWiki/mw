@@ -123,6 +123,8 @@ search errors/transactions by request ID. Transaction names are entry points
 such as `index` or `api`. Every web transaction records `http.request.method`.
 The `index` and `api` entry points also record `mw.action`, defaulting to `view`
 and `help` respectively. Views filtered to `transaction=run` need to change.
+Use `mw.special=RunJobs` to identify standalone `Special:RunJobs` requests among
+the `index` transactions.
 Historical errors may have different trace IDs from their transactions.
 Browser-to-backend tracing and ingestion of ordinary MediaWiki logs require
 separate integrations.

@@ -4,6 +4,7 @@ namespace MediaWiki\Extension\MooncellSentry;
 
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Request\WebRequest;
+use MediaWiki\SpecialPage\SpecialPage;
 use Sentry\Event;
 use Sentry\EventType;
 use Sentry\SentrySdk;
@@ -82,6 +83,12 @@ final class Hooks {
 			}
 		} finally {
 			SentrySdk::getCurrentHub()->getClient()?->flush();
+		}
+	}
+
+	public static function onSpecialPageBeforeExecute( SpecialPage $specialPage ): void {
+		if ( MW_ENTRY_POINT === 'index' && $specialPage->getName() === 'RunJobs' ) {
+			self::$requestTrace?->markRunJobs();
 		}
 	}
 

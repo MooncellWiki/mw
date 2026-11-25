@@ -14,7 +14,8 @@
 		"MediaWiki\\Extension\\MooncellSentry\\": "src/"
 	},
 	"Hooks": {
-		"LogException": "MediaWiki\\Extension\\MooncellSentry\\Hooks::onLogException"
+		"LogException": "MediaWiki\\Extension\\MooncellSentry\\Hooks::onLogException",
+		"SpecialPageBeforeExecute": "MediaWiki\\Extension\\MooncellSentry\\Hooks::onSpecialPageBeforeExecute"
 	},
 	"manifest_version": 2,
 	"callback": "MediaWiki\\Extension\\MooncellSentry\\Hooks::onRegistration",

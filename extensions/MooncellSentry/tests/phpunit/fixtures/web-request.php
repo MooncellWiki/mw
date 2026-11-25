@@ -2,7 +2,11 @@
 
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Deferred\DeferredUpdates;
+use MediaWiki\HookContainer\HookRunner;
+use MediaWiki\MediaWikiServices;
 use MediaWiki\Request\WebRequest;
+use MediaWiki\SpecialPage\SpecialPage;
+use MediaWiki\Title\Title;
 use Psr\Http\Message\ServerRequestInterface;
 use Sentry\Event;
 use Sentry\Integration\RequestFetcherInterface;
@@ -62,6 +66,7 @@ function wfMooncellSentryTestSettings( $settings ): void {
 					'trace' => $event->getTraceId(),
 					'request_id' => $event->getTags()['mw_request_id'] ?? null,
 					'job_id' => $event->getTags()['mw_job_request_id'] ?? null,
+					'special_page' => $event->getTags()['mw.special'] ?? null,
 					'message' => ( $event->getExceptions()[0] ?? null )?->getValue(),
 					'name' => $event->getTransaction(),
 					'status' => $event->getContexts()['trace']['status'] ?? null,
@@ -167,6 +172,9 @@ switch ( $scenario ) {
 		echo strlen( str_repeat( 'x', 16 * 1024 * 1024 ) );
 		break;
 	case 'job':
+		RequestContext::getMain()->setTitle( Title::makeTitle( NS_SPECIAL, 'RunJobs' ) );
+		( new HookRunner( MediaWikiServices::getInstance()->getHookContainer() ) )
+			->onSpecialPageBeforeExecute( new SpecialPage( 'RunJobs' ), null );
 		$requestId = WebRequest::getRequestId();
 		WebRequest::overrideRequestId( 'job-origin' );
 		MWExceptionHandler::logException( new RuntimeException( 'job error' ) );
@@ -178,6 +186,9 @@ switch ( $scenario ) {
 		break;
 	case 'request':
 	case 'unsampled':
+		if ( MW_ENTRY_POINT === 'index' ) {
+			RequestContext::getMain()->setTitle( Title::makeTitle( NS_MAIN, 'RunJobs' ) );
+		}
 		@trigger_error( 'suppressed warning', E_USER_WARNING );
 		trigger_error( 'recoverable warning', E_USER_WARNING );
 		DeferredUpdates::addCallableUpdate( static function () {

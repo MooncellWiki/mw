@@ -142,6 +142,7 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 		$transaction = $records['transaction'][0];
 		$this->assertSame( 'ok', $transaction['status'] );
 		$this->assertSame( 'index', $transaction['name'] );
+		$this->assertNull( $transaction['special_page'] );
 		$this->assertSame( $setup['request_id'], $transaction['request_id'] );
 		$this->assertSame( $trace, $transaction['trace'] );
 	}
@@ -202,6 +203,7 @@ class RequestTraceTest extends MediaWikiUnitTestCase {
 		$this->assertSame( 'job-origin', $job['job_id'] );
 		$this->assertNull( $other['job_id'] );
 		$this->assertNull( $transaction['job_id'] );
+		$this->assertSame( 'RunJobs', $transaction['special_page'] );
 	}
 
 	/** @covers \MediaWiki\Extension\MooncellSentry\Hooks */

@@ -59,6 +59,10 @@ final class RequestTrace {
 		}
 	}
 
+	public function markRunJobs(): void {
+		$this->transaction->setTags( [ 'mw.special' => 'RunJobs' ] );
+	}
+
 	public function finish( int $httpStatus = 200, int $shutdownErrorType = 0 ): void {
 		if ( $this->finished ) {
 			return;
