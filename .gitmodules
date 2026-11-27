@@ -286,4 +286,4 @@
 [submodule "extensions/Sentry"]
 	path = extensions/Sentry
 	url = https://github.com/MooncellWiki/mediawiki-extensions-Sentry.git
-	branch = REL1_43
+	branch = main
