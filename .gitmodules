@@ -283,3 +283,7 @@
 	path = extensions/OAuth
 	url = https://github.com/wikimedia/mediawiki-extensions-OAuth
 	branch = REL1_43
+[submodule "extensions/Sentry"]
+	path = extensions/Sentry
+	url = https://github.com/MooncellWiki/mediawiki-extensions-Sentry.git
+	branch = main
