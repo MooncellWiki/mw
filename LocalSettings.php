@@ -19,7 +19,7 @@ if ( !defined( 'MEDIAWIKI' ) ) {
 	exit;
 }
 # Queue Sentry first so it can report failures in other registration callbacks.
-wfLoadExtension( 'MooncellSentry' );
+wfLoadExtension( 'Sentry' );
 require_once __DIR__ . '/etc/config.php';
 
 $wgNamespaceRobotPolicies[NS_USER] = 'noindex';

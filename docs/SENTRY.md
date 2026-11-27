@@ -1,8 +1,12 @@
 # Sentry request correlation (MediaWiki 1.43)
 
+The [Sentry extension](https://github.com/MooncellWiki/mediawiki-extensions-Sentry/tree/REL1_43)
+is pinned as a Git submodule. Run `git submodule update --init extensions/Sentry`
+after checkout to install the revision used by this MediaWiki branch.
+
 ## Configuration and ownership
 
-`MooncellSentry` owns SDK initialization, exception capture/filtering, request
+`Sentry` owns SDK initialization, exception capture/filtering, request
 tracing and profile finalization. `LocalSettings.php` loads the extension. Each
 site's `mooncell-docker-config/k8s/overlays/{prts,fgo,mooncell}/post-config.php`
 only needs its project DSN:
@@ -12,8 +16,8 @@ $wgMooncellSentryDsn = 'http://<project-public-key>@sentry-relay:3000/<project-i
 ```
 
 Kustomize puts that file in `wiki-config`, mounted at `/srv/etc/post-config.php`.
-`LocalSettings.php` queues MooncellSentry first and then reads the site configuration.
-After MediaWiki validates the queued manifests, MooncellSentry initializes the SDK
+`LocalSettings.php` queues Sentry first and then reads the site configuration.
+After MediaWiki validates the queued manifests, Sentry initializes the SDK
 before the other extensions' registration callbacks run.
 For manifest or dependency validation failures, check the PHP logs. An empty
 DSN preserves a client supplied by the legacy site configuration.
@@ -42,7 +46,7 @@ The SDK's fatal shutdown listener covers engine failures such as memory exhausti
 ## Request lifecycle
 
 ```text
-LocalSettings.php → wfLoadExtension( 'MooncellSentry' ) → site post-config.php
+LocalSettings.php → wfLoadExtension( 'Sentry' ) → site post-config.php
 MediaWiki setup
   validate manifests → registration callback initializes the SDK and tags the request ID
   install MW handlers → LogException captures errors during setup
@@ -135,9 +139,9 @@ separate integrations.
 
 ## Regression checks
 
-Run `vendor/bin/phpunit extensions/MooncellSentry/tests/phpunit/unit/RequestTraceTest.php`
+Run `vendor/bin/phpunit extensions/Sentry/tests/phpunit/unit/RequestTraceTest.php`
 with the project PHP runtime. If local settings require an unavailable database,
-set `MW_CONFIG_FILE` to minimal test-only settings that load `MooncellSentry`.
+set `MW_CONFIG_FILE` to minimal test-only settings that load `Sentry`.
 The lifecycle tests run isolated PHP processes with a recording SDK transport.
 They exercise failures in another extension's registration callback and during
 late setup, a throwing CLI transport, a native OOM, PHP error masks, HTTP status,
